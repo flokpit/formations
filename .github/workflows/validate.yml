@@ -1,0 +1,39 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: discover breeds and formations
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          files=$(ls breeds/*.yaml formations/*.yaml | jq -R . | jq -sc .)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          echo "$files" | jq -r '.[]'
+
+  validate:
+    name: ${{ matrix.file }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJSON(needs.discover.outputs.files) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run scripts/validate.py "$FILE"
+        env:
+          FILE: ${{ matrix.file }}

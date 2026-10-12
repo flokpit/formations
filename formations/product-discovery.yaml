@@ -1,0 +1,82 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: product-discovery
+description: Turns an idea into a spec, an architecture sketch, executable acceptance tests and a ready backlog before any production code is written; led by a project manager.
+status: proposal
+shape: discovery
+
+lead:
+  breed: project-manager
+  op: true
+
+members:
+  - breed: software-architect
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: ui-tester
+    count: { min: 0, max: 1 }
+    start: on_demand            # only for features with a user interface
+  - breed: planner
+    count: { min: 0, max: 1 }
+    start: on_demand            # for large backlogs
+
+spawn_tree:
+  project-manager: [software-architect, ui-tester, planner]
+  software-architect: []        # narrowed: no developers in discovery
+
+work_split: |
+  1. The project manager writes the spec (problem, users, goals, non-goals,
+     acceptance criteria) and gets it confirmed by a human.
+  2. The software architect sketches the architecture and records open
+     decisions as ADRs; options, not implementation.
+  3. The ui-tester turns acceptance criteria into failing end-to-end tests
+     that define "done" for the later build.
+  4. The planner (or the project manager for small scopes) files the backlog:
+     one issue per work item, linked to spec, ADRs and tests.
+
+handoffs:
+  project-manager:    { deliver: confirmed spec in a PR, to: software-architect }
+  software-architect: { deliver: ADR PR with options and a recommendation, to: project-manager }
+  ui-tester:          { deliver: PR with failing e2e tests for each acceptance criterion, to: project-manager }
+  planner:            { deliver: backlog issues with acceptance criteria, to: project-manager }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+  progress_file: docs/discovery/{flock}.md
+
+verification:
+  required: [spec-confirmed-by-human, adrs-reviewed-by-human]
+  optional: [acceptance-tests-fail-for-the-right-reason]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - backlog_ready               # spec, ADRs, tests and issues exist and a human accepted them
+    - human_stop
+    - no_progress_rounds: 3
+    - limits_reached
+  summary: Links to the spec, ADRs, acceptance-test PR and backlog, plus open questions and the formation recommended for the build (usually feature-team).
+
+limits:
+  max_agents: 4                 # lead + architect + ui-tester + planner
+  max_lifetime: 6h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "product-discovery: {task}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - spec_confirmation           # always: discovery ends with human decisions
+  - scope_or_priority_decision
+  - architecture_decision_with_no_clear_winner
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Restate the idea in two sentences, list what you need to know (users,
+  constraints, deadline) and ask the humans in the channel with intent
+  QUESTION. Write the spec draft only after the first answers arrive.

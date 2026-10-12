@@ -149,46 +149,10 @@ Usage: `/fly <formation> [--repo url] [--task "..."]` or
 | 10 | Channel setup | Whether the flock gets its own channel, its topic and modes, and which humans are ops |
 | 11 | Escalation | When the lead must ask a human (intent `QUESTION`) instead of deciding: merges to main, scope changes, budget extensions, repeated failures |
 
-### Example
+### Proposals
 
-```yaml
-# formations/feature-team.yaml
-name: feature-team
-description: Implements a feature across several modules, reviewed and UI-tested before it is reported done.
-lead: software-architect
-members:
-  - breed: developer
-    count: { min: 1, max: 4 }
-    start: on_demand          # spawned by the lead, one per module or issue
-  - breed: reviewer
-    count: { min: 1, max: 1 }
-    start: with_flock
-  - breed: ui-tester
-    count: { min: 0, max: 1 }
-    start: on_demand
-spawn_tree:
-  software-architect: [developer, reviewer, ui-tester]
-handoff:
-  developer: "DONE with a PR link; tests pass locally"
-  reviewer: "DONE with approve or change requests on the PR"
-  ui-tester: "DONE with a Playwright report; BLOCKED with screenshots on failure"
-state: github-issues           # one issue per work item, linked PRs
-verification:
-  required: [reviewer, ci-green]
-  optional: [ui-tester]
-termination:
-  - all_items_verified
-  - human_stop
-  - no_progress_rounds: 3
-limits:
-  max_agents: 6
-  max_lifetime: 8h
-  max_budget_usd: 0             # 0 = no cap, as for breeds
-escalate_to_human:
-  - merge_to_default_branch
-  - scope_change
-  - budget_extension
-```
+Proposed formations live in [`formations/`](../formations/README.md), one
+YAML file each: `feature-team`, `bug-sweep` and `product-discovery`.
 
 ### Common shapes
 

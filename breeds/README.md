@@ -21,6 +21,9 @@ commit but not yet reviewed (`review: pending`), as required by
 
 ## Schema (`formations/v1alpha1`)
 
+Machine-readable: [`specs/breed.schema.json`](../specs/breed.schema.json).
+Validate with `uv run scripts/validate.py`.
+
 `extends: _base` deep-merges [`_base.yaml`](_base.yaml): maps merge, lists
 and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 

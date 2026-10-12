@@ -1,0 +1,75 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: bug-sweep
+description: Works through many small, independent issues in parallel; a planner triages and assigns, developers fix one issue each, a reviewer verifies every fix.
+status: proposal
+shape: fan-out-verifier
+
+lead:
+  breed: planner
+  op: true
+
+members:
+  - breed: developer
+    count: { min: 1, max: 5 }
+    start: on_demand            # one per issue; a developer takes the next issue when its PR is approved
+    overrides:
+      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 60
+      lifecycle: { max_lifetime: 4h }
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+
+spawn_tree:
+  planner: [developer, reviewer]
+
+work_split: |
+  Triage the issues given (a label, a milestone or a list): reproduce or
+  confirm each one, drop duplicates and anything that needs a design
+  decision (escalate those), and order the rest by impact. Give each
+  developer exactly one issue at a time. Issues that touch the same files go
+  to the same developer, one after the other.
+
+handoffs:
+  planner:   { deliver: triaged issue list with acceptance criteria per issue, to: developer }
+  developer: { deliver: PR link with a regression test that failed before the fix, to: reviewer }
+  reviewer:  { deliver: "submitted PR review: approve or request changes", to: planner }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+
+verification:
+  required: [reviewer-approved, ci-green, regression-test-present]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - all_triaged_issues_verified_or_escalated
+    - human_stop
+    - no_progress_rounds: 3
+    - limits_reached
+  summary: Table of issues with status (fixed and approved, escalated, rejected as duplicate or not reproducible) and PR links.
+
+limits:
+  max_agents: 7                 # lead + 5 developers + reviewer
+  max_lifetime: 6h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "bug-sweep: {task}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - merge_to_default_branch
+  - issue_needs_design_decision
+  - issue_not_reproducible
+  - budget_or_lifetime_extension
+
+kickoff: |
+  List the issues you were given, post the triage result as a checklist, then
+  spawn the reviewer and the first developers. Start with the issue with the
+  highest impact.

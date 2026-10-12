@@ -1,0 +1,81 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: feature-team
+description: Implements a feature that spans several modules; an architect designs and splits the work, developers build in parallel, an independent reviewer and an optional ui-tester verify.
+status: proposal
+shape: orchestrator-workers-verifier
+
+lead:
+  breed: software-architect
+  op: true
+
+members:
+  - breed: developer
+    count: { min: 1, max: 4 }
+    start: on_demand            # one per module or work item, spawned by the lead
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: ui-tester
+    count: { min: 0, max: 1 }
+    start: on_demand            # only when the feature has a user interface
+
+spawn_tree:
+  software-architect: [developer, reviewer, ui-tester]
+
+work_split: |
+  Design first: write an ADR for the feature with the options considered and
+  the chosen one. Then split by module or bounded context, never by job
+  title: one work item per developer, each with acceptance criteria that can
+  be checked by running something. Items must not depend on unmerged work of
+  another item; if they do, sequence them. Spawn a developer per item, at most
+  four at a time.
+
+handoffs:
+  software-architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
+  developer:          { deliver: PR link with passing tests and the issue it closes, to: reviewer }
+  reviewer:           { deliver: "submitted PR review: approve or request changes", to: software-architect }
+  ui-tester:          { deliver: test report with screenshots and a PR with e2e tests, to: software-architect }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+  progress_file: PROGRESS.md    # on the lead's branch; chat is coordination, not the record
+
+verification:
+  required: [reviewer-approved, ci-green, acceptance-criteria-checked]
+  optional: [ui-tester-passed]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - all_items_verified          # every issue closed by an approved, green PR
+    - human_stop
+    - no_progress_rounds: 3       # three lead check-ins without a newly verified item
+    - limits_reached
+  summary: Feature summary with links to the ADR, all PRs and their review state, open risks, and what a human must merge.
+
+limits:
+  max_agents: 7                 # lead + 4 developers + reviewer + ui-tester
+  max_lifetime: 8h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "feature-team: {task}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - merge_to_default_branch
+  - scope_change
+  - architecture_decision_with_no_clear_winner
+  - budget_or_lifetime_extension
+  - same_item_failed_review_twice
+
+kickoff: |
+  Post the task as you understood it and the acceptance criteria you derived,
+  with intent QUESTION if anything is unclear; wait for an answer before
+  designing. Then write the ADR, file the issues, spawn the developers and
+  post the plan as a checklist.

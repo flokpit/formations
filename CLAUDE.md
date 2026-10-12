@@ -41,9 +41,38 @@ one maintenance script.
 
 One YAML file per breed (`formations/v1alpha1`), all extending
 `breeds/_base.yaml` (deep merge: maps merge, lists and scalars replace). The
-schema is documented in `breeds/README.md`; keep it and the files in sync.
+schema is documented in `breeds/README.md` and enforced by
+`specs/breed.schema.json`; keep README, schema and files in sync.
 Skills are referenced by repository, commit and path and stay
 `review: pending` until someone has read them.
+
+## Formations (`formations/`)
+
+One YAML file per formation (`formations/v1alpha1`), schema in
+`formations/README.md`. Formations may only narrow breeds: `spawn_tree`
+entries must be subsets of the breed's `privileges.may_spawn`, member
+`overrides` may only lower limits, and `limits.max_agents` must cover the
+lead plus every member at its `count.max`.
+
+## Validation
+
+`specs/breed.schema.json` and `specs/formation.schema.json` (JSON Schema
+2020-12) define the file shapes; `scripts/validate.py` checks every file
+against them plus the cross-file rules (merged breeds complete, references
+exist, formations only narrow). Run it after any change to `breeds/`,
+`formations/` or `specs/`; dependencies come from the script's inline
+metadata via `uv`:
+
+```sh
+uv run scripts/validate.py              # all breeds and formations
+uv run scripts/validate.py breeds/x.yaml  # errors for these files only
+```
+
+A new field needs a schema change first: unknown keys are rejected.
+
+CI (`.github/workflows/validate.yml`) runs the validator once per breed and
+formation file, as a matrix built from `breeds/*.yaml` and
+`formations/*.yaml`, on every push to `main` and every pull request.
 
 ## Research bundle (`docs/resources/`)
 

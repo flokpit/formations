@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flokpit/formations/specs/breed.schema.json",
+  "title": "Breed",
+  "description": "A kind of flokpit agent (formations/v1alpha1). Files with kind Breed extend a BreedBase; the merged result must satisfy $defs/resolved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "name"],
+  "properties": {
+    "apiVersion": { "const": "formations/v1alpha1" },
+    "kind": { "enum": ["Breed", "BreedBase"] },
+    "name": { "type": "string", "pattern": "^_?[a-z][a-z0-9-]{0,31}$" },
+    "description": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["proposal", "active", "deprecated"] },
+    "extends": { "type": "string", "pattern": "^_?[a-z][a-z0-9-]{0,31}$" },
+    "model": { "$ref": "#/$defs/model" },
+    "house_rules": { "type": "string", "minLength": 1 },
+    "instructions": { "type": "string", "minLength": 1 },
+    "skills": { "type": "array", "items": { "$ref": "#/$defs/skill" } },
+    "runtime": { "$ref": "#/$defs/runtime" },
+    "pod": { "$ref": "#/$defs/pod" },
+    "os": { "$ref": "#/$defs/os" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "lifecycle": { "$ref": "#/$defs/lifecycle" },
+    "tools": { "$ref": "#/$defs/tools" },
+    "privileges": { "$ref": "#/$defs/privileges" },
+    "workspace": { "$ref": "#/$defs/workspace" },
+    "credentials": { "$ref": "#/$defs/credentials" },
+    "handoff": { "$ref": "#/$defs/handoff" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "Breed" } } },
+      "then": {
+        "required": ["description", "status", "extends"],
+        "properties": { "name": { "pattern": "^[a-z][a-z0-9-]{0,31}$" } }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "BreedBase" } } },
+      "then": {
+        "required": ["model", "house_rules", "pod", "os", "runtime", "limits", "lifecycle", "tools", "privileges"],
+        "not": { "required": ["extends"] }
+      }
+    }
+  ],
+  "$defs": {
+    "breedName": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+    "duration": { "type": "string", "pattern": "^[0-9]+(s|m|h)$" },
+    "quantity": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|T|Ki|Mi|Gi|Ti)?$" },
+        { "type": "number", "minimum": 0 }
+      ]
+    },
+    "decision": { "enum": ["allow", "deny"] },
+    "rules": {
+      "description": "Either one decision for the whole category or a map of pattern to decision.",
+      "oneOf": [
+        { "$ref": "#/$defs/decision" },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/decision" } }
+      ]
+    },
+    "resourceList": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": { "$ref": "#/$defs/quantity" },
+        "memory": { "$ref": "#/$defs/quantity" },
+        "ephemeral-storage": { "$ref": "#/$defs/quantity" }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": { "enum": ["frontier", "balanced", "fast"] },
+        "effort": { "$ref": "#/$defs/effort" },
+        "overridable": { "type": "boolean" },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["provider", "id"],
+            "properties": {
+              "provider": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+              "id": { "type": "string", "minLength": 1 },
+              "effort": { "$ref": "#/$defs/effort" }
+            }
+          }
+        }
+      }
+    },
+    "effort": { "enum": ["low", "medium", "high", "xhigh", "max"] },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "path", "license", "review"],
+      "properties": {
+        "source": { "type": "string", "pattern": "^([A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+|local:.+)$" },
+        "ref": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "path": { "type": "string", "minLength": 1 },
+        "license": { "type": "string", "minLength": 1 },
+        "review": { "enum": ["pending", "approved", "rejected"] }
+      },
+      "if": { "properties": { "source": { "pattern": "^local:" } } },
+      "else": { "required": ["ref"] }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": { "type": "string", "minLength": 1 },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "options": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "pod": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": { "$ref": "#/$defs/resourceList" },
+            "limits": { "$ref": "#/$defs/resourceList" }
+          }
+        },
+        "workspace_size": { "$ref": "#/$defs/quantity" }
+      }
+    },
+    "os": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user": { "type": "string", "minLength": 1 },
+        "sudo": { "type": "boolean" },
+        "root_filesystem": { "enum": ["read-only", "read-write"] },
+        "writable_paths": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "uniqueItems": true },
+        "tmp_size": { "$ref": "#/$defs/quantity" },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "egress": { "enum": ["none", "allowlist", "open"] },
+            "allow": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$" }
+            }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_turns": { "type": "integer", "minimum": 1 },
+        "max_budget_usd": { "type": "number", "minimum": 0 },
+        "summary_budget_usd": { "type": ["number", "null"], "minimum": 0 },
+        "tighten_only": { "type": "boolean" }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hello": { "type": "string", "minLength": 1 },
+        "idle_timeout": { "$ref": "#/$defs/duration" },
+        "max_lifetime": { "$ref": "#/$defs/duration" },
+        "summary_deadline": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": { "$ref": "#/$defs/rules" },
+        "edit": { "$ref": "#/$defs/rules" },
+        "bash": { "$ref": "#/$defs/rules" },
+        "webfetch": { "$ref": "#/$defs/rules" },
+        "websearch": { "$ref": "#/$defs/rules" },
+        "mcp": { "$ref": "#/$defs/rules" },
+        "subagents": { "$ref": "#/$defs/rules" }
+      }
+    },
+    "privileges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "may_spawn": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/breedName" } },
+        "chat": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "enum": ["voice", "none"] },
+            "op": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clone": { "type": "boolean" },
+        "branch_prefix": { "type": "string", "minLength": 1 }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "github": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z_]+:[a-z-]+$" } }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["done"],
+      "properties": {
+        "done": { "type": "string", "minLength": 1 },
+        "next": { "$ref": "#/$defs/breedName" }
+      }
+    },
+    "resolved": {
+      "description": "A breed after merging with the base it extends: every feature must be present.",
+      "allOf": [
+        { "$ref": "#" },
+        {
+          "required": ["description", "status", "model", "instructions", "house_rules", "skills", "runtime", "pod", "os", "limits", "lifecycle", "tools", "privileges"],
+          "properties": {
+            "kind": { "const": "Breed" },
+            "model": { "required": ["class", "candidates"] },
+            "lifecycle": { "required": ["hello", "idle_timeout", "max_lifetime", "summary_deadline"] },
+            "limits": { "required": ["max_turns", "max_budget_usd"] },
+            "privileges": { "required": ["may_spawn"] }
+          }
+        }
+      ]
+    }
+  }
+}
