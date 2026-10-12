@@ -77,6 +77,14 @@ CI (`.github/workflows/validate.yml`) runs the validator once per breed and
 formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
+On pushes to `main`, after every validation job passed, the `publish` job
+packs `breeds/` and `formations/` into `<short sha>.tar.gz` (reproducible tar),
+uploads it to the bunny.net storage zone, verifies it by checksum, and then
+overwrites `LATEST` in the zone with that file name. Credentials are the
+repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
+`FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; locally they live in `.env.local`,
+which must never be committed (`.env.*` is ignored).
+
 ## Research bundle (`docs/resources/`)
 
 An Open Knowledge Format v0.2 bundle

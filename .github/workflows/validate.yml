@@ -37,3 +37,59 @@ jobs:
       - run: uv run scripts/validate.py "$FILE"
         env:
           FILE: ${{ matrix.file }}
+
+  publish:
+    name: publish archive to bunny.net
+    # Only for main, and only after every validation job succeeded (needs fails closed).
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Uploads run one at a time in push order, so LATEST is never overwritten by an older commit.
+    concurrency:
+      group: publish-main
+      cancel-in-progress: false
+    env:
+      BUNNY_STORAGE_HOST: storage.bunnycdn.com   # region of the storage zone (Falkenstein)
+      BUNNY_ZONE: ${{ secrets.FORMATIONS_BUNNY_BUCKET_NAME }}
+      BUNNY_KEY: ${{ secrets.FORMATIONS_BUNNY_BUCKET_WRITE_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build archive
+        run: |
+          short=$(git rev-parse --short HEAD)
+          archive="$short.tar.gz"
+          # Reproducible: sorted entries, fixed owner, mtime of the commit, no gzip timestamp.
+          tar --sort=name --owner=0 --group=0 --numeric-owner \
+              --mtime="@$(git log -1 --format=%ct)" \
+              -cf - breeds formations | gzip -n -9 > "$archive"
+          tar -tzf "$archive"
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+          echo "SHA256=$(sha256sum "$archive" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Upload archive
+        run: |
+          curl --fail-with-body -sS -X PUT \
+            -H "AccessKey: $BUNNY_KEY" \
+            -H "Content-Type: application/octet-stream" \
+            -H "Checksum: ${SHA256^^}" \
+            --data-binary "@$ARCHIVE" \
+            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/$ARCHIVE"
+
+      - name: Verify archive
+        run: |
+          curl --fail -sS -H "AccessKey: $BUNNY_KEY" -o downloaded.tar.gz \
+            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/$ARCHIVE"
+          echo "$SHA256  downloaded.tar.gz" | sha256sum -c -
+
+      - name: Update LATEST
+        # Only after the archive is uploaded and verified, so LATEST never points to a missing file.
+        run: |
+          printf '%s' "$ARCHIVE" > LATEST
+          curl --fail-with-body -sS -X PUT \
+            -H "AccessKey: $BUNNY_KEY" \
+            -H "Content-Type: text/plain" \
+            --data-binary @LATEST \
+            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/LATEST"
+          test "$(curl --fail -sS -H "AccessKey: $BUNNY_KEY" "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/LATEST")" = "$ARCHIVE"
+          echo "LATEST -> $ARCHIVE (sha256 $SHA256)" >> "$GITHUB_STEP_SUMMARY"
