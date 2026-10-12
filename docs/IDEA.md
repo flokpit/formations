@@ -1,13 +1,13 @@
 ---
 type: Project Idea
-title: agentic-templates Idea
+title: formations Idea
 description: Central store for flokpit agent breeds (role definitions), custom skills and agent container features, with formations (predefined multi-agent swarms) as a later step.
 tags: [idea, breeds, skills, agent-image, formations, swarm, flokpit]
 generated: { by: human:dj, at: 2026-10-12T00:00:00Z }
 status: draft
 ---
 
-# agentic-templates — Idea
+# formations — Idea
 
 This repository is the single place where flokpit agents are described. Each
 kind of agent is a **breed**: what the agent is and how it behaves, what it can

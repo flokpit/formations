@@ -2,7 +2,7 @@
 okf_version: "0.2"
 ---
 
-# agentic-templates Resources
+# formations Resources
 
 Research that breeds and formations are built from.
 

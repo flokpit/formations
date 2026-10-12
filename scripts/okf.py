@@ -11,7 +11,7 @@ from pathlib import Path
 RESERVED = {"index.md", "log.md"}
 # Directory headings and descriptions for generated index.md files.
 DIRS = {
-    "": ("agentic-templates Resources", "Research that breeds and formations are built from."),
+    "": ("formations Resources", "Research that breeds and formations are built from."),
     "skills": ("Skills", "Agent Skills and Claude Code plugins: sources, usage, breed fit, security."),
     "portable-agents": ("Portable Agents", "Defining breeds independent of the agent vendor: instructions, skills, agent definitions, runtime, permissions."),
 }

@@ -105,7 +105,7 @@ so explicitly.[^skillssh-docs]
 
 Scanners help but can be evaded, so they do not replace reading the skill.
 
-## Rules for agentic-templates
+## Rules for formations
 
 1. Prefer first-party (Anthropic) and vendor-official packs; treat
    aggregators as discovery only.

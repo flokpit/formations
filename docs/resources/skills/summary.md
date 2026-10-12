@@ -70,7 +70,7 @@ Research date 2026-10-12. Details and sources are on the linked pages.
 Full tables, runtime needs and headless caveats: [Skills by
 Breed](/skills/skills-by-breed.md).[^breeds]
 
-## Consequences for agentic-templates
+## Consequences for formations
 
 - **Delivery under `--bare`.** flokpit agents ignore skills in the cloned
   repository. Breed skills must be vendored here, pinned to a commit, and
