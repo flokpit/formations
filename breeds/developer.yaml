@@ -42,7 +42,7 @@ runtime:
 pod:
   resources:
     requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
-    limits:   { cpu: "2",  memory: 3Gi, ephemeral-storage: 8Gi }
+    limits:   { cpu: "2",  memory: 6Gi, ephemeral-storage: 8Gi }   # flokpit: 3Gi was OOMKilled by builds and test runs
 
 os:
   network:
