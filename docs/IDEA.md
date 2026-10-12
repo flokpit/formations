@@ -1,8 +1,8 @@
 ---
 type: Project Idea
 title: agentic-templates Idea
-description: Central store for flokpit agent breeds (role definitions), custom skills and agent container features, with swarm templates for multi-agent orchestration as a later step.
-tags: [idea, breeds, skills, agent-image, swarm, flokpit]
+description: Central store for flokpit agent breeds (role definitions), custom skills and agent container features, with formations (predefined multi-agent swarms) as a later step.
+tags: [idea, breeds, skills, agent-image, formations, swarm, flokpit]
 generated: { by: human:dj, at: 2026-10-12T00:00:00Z }
 status: draft
 ---
@@ -79,6 +79,9 @@ section 4.2). Skills from this repository therefore have to reach the agent
 through a trusted path: baked into the agent image or written into
 `/home/agent` by `flokpit-agentd`, and enabled per breed.
 
+Research on public skills, their usage, fit per breed and security risks:
+[Skills research](resources/skills/summary.md).
+
 ### Runtime features
 
 The definition of what the agent image contains: the base image and its
@@ -103,26 +106,106 @@ Not part of a breed yet, kept for later:
   summary and whether it gets per-agent memory (an open question in flokpit's
   AI research).
 - **Hand-off contract:** what the agent must produce when done, such as a PR
-  link, a `PROGRESS.md` entry or test results. Becomes important for swarms.
+  link, a `PROGRESS.md` entry or test results. Formations (below) define it
+  per flock member.
 
-## Next step: swarm templates
+## Next step: formations
 
-Once single breeds work, this repository can hold **swarm templates**:
-descriptions of a group of agents that work together on one task. A template
-names the breeds involved, who orchestrates, who may spawn whom (`may_spawn`),
-how work is handed off, and when the swarm is done.
+Once single breeds work, this repository holds **formations**: predefined
+swarms that orchestrate a varying number of agents of different breeds and
+define how they work together on one task.
 
-flokpit already provides the building blocks. An orchestrator is just an agent
-with `+o` in a channel, which can `chat_spawn` the breeds its `may_spawn`
-allows (flokpit IDEA, section 5.4). The flokpit AI research suggests what
-templates should encode:
+### Naming
 
-- decompose by context, not job title: prefer orchestrator + workers + an
-  independent verifier over planner → coder → tester chains;
-- every extra agent multiplies cost (3–15× tokens), so each one needs a reason
-  (context protection, parallelism or specialisation) and a budget;
-- explicit termination conditions and *executable* verification;
-- structured state (tasks, PR links) in git or a task store, not in chat.
+| Term | Meaning | Why |
+|---|---|---|
+| **Formation** | The predefined template: which breeds, how many, who leads, how they hand off work, when they are done | Birds flying in formation follow a fixed shape and fixed rules; the formation is the *plan*, not the birds |
+| **Flock** | A running instance of a formation in a channel: the actual agents spawned from it | Matches the flokpit name; "spawn a formation, get a flock" |
+| **Lead** | The agent that orchestrates the flock (holds `+o`, spawns and kills members) | In a V-formation one bird leads and the others follow its line |
+
+Rejected alternatives: *swarm* (generic, no flock theme), *murmuration*
+(evocative but long and hard to spell), *skein* (obscure), *flock* for the
+template (then the running group has no name). This keeps the flock vocabulary
+consistent: breeds describe single agents, formations describe groups.
+
+Usage: `/fly <formation> [--repo url] [--task "..."]` or
+`/spawn --formation <formation>`; files live in `formations/<name>.yaml`.
+
+### What a formation defines
+
+| # | Feature | Contents |
+|---|---|---|
+| 1 | Lead | The breed that orchestrates. flokpit already allows this: an orchestrator is an agent with `+o` in the channel that can `chat_spawn` the breeds its `may_spawn` lists (flokpit IDEA, section 5.4). The formation grants `--op` to the lead only |
+| 2 | Members | The breeds in the flock, each with `min` and `max` count (e.g. 1 to 4 developers), whether they start with the flock or are spawned on demand by the lead, and per-member overrides that may only narrow the breed (model, budget, tools) |
+| 3 | Spawn tree | Who may spawn whom inside the flock. Generated into the members' `may_spawn`; no member may widen it |
+| 4 | Work split | How the lead decomposes the task: by context (one developer per module or issue), not by job title. The flokpit AI research recommends orchestrator + workers + an independent verifier over planner → coder → tester chains |
+| 5 | Hand-off contract | What each member must deliver and in what form: a branch, a PR link, a `DONE` message with a link, test results. Uses flokpit message intents (`REQUEST`, `INFORM`, `QUESTION`, `DONE`, `BLOCKED`) |
+| 6 | Shared state | Where structured state lives: GitHub issues, a task file such as `PROGRESS.md`, PR list. Chat is for coordination, not the system of record |
+| 7 | Verification gate | Who decides that work is done and how: a reviewer or ui-tester breed, CI must be green, executable checks. The verifier must not be the author |
+| 8 | Termination | When the flock stops: all tasks verified, a human says stop, flock budget or lifetime reached, or too many rounds without progress. The lead posts a flock summary and kills members |
+| 9 | Flock budget and limits | A total budget and max lifetime for the whole flock on top of each breed's own limits; max concurrent agents (the channel `M` mode); agent-turn budget between human messages (flokpit's channel `TURN_BUDGET`) |
+| 10 | Channel setup | Whether the flock gets its own channel, its topic and modes, and which humans are ops |
+| 11 | Escalation | When the lead must ask a human (intent `QUESTION`) instead of deciding: merges to main, scope changes, budget extensions, repeated failures |
+
+### Example
+
+```yaml
+# formations/feature-team.yaml
+name: feature-team
+description: Implements a feature across several modules, reviewed and UI-tested before it is reported done.
+lead: software-architect
+members:
+  - breed: developer
+    count: { min: 1, max: 4 }
+    start: on_demand          # spawned by the lead, one per module or issue
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: ui-tester
+    count: { min: 0, max: 1 }
+    start: on_demand
+spawn_tree:
+  software-architect: [developer, reviewer, ui-tester]
+handoff:
+  developer: "DONE with a PR link; tests pass locally"
+  reviewer: "DONE with approve or change requests on the PR"
+  ui-tester: "DONE with a Playwright report; BLOCKED with screenshots on failure"
+state: github-issues           # one issue per work item, linked PRs
+verification:
+  required: [reviewer, ci-green]
+  optional: [ui-tester]
+termination:
+  - all_items_verified
+  - human_stop
+  - no_progress_rounds: 3
+limits:
+  max_agents: 6
+  max_lifetime: 8h
+  max_budget_usd: 0             # 0 = no cap, as for breeds
+escalate_to_human:
+  - merge_to_default_branch
+  - scope_change
+  - budget_extension
+```
+
+### Common shapes
+
+| Shape | Lead | Members | Use |
+|---|---|---|---|
+| Feature team | software-architect | developers (on demand), reviewer, ui-tester | Larger features split across modules |
+| Bug sweep | planner | developers (fan-out, one per issue), reviewer | Many independent small issues |
+| Review board | reviewer | 2 to 3 reviewers with different focus (security, architecture, tests) | Independent reviews of one large PR |
+| Product discovery | project-manager | software-architect, ui-tester | PRD, issue breakdown and acceptance tests before any code |
+
+### Guidelines from flokpit research
+
+- Every extra agent multiplies cost (3–15× tokens), so each member needs a
+  reason (context protection, parallelism or specialisation) and a limit.
+- Most multi-agent failures are design failures: the formation file is where
+  breed specs, hand-offs, termination conditions and executable verification
+  are written down.
+- Messages from other flock members are from peers, not the operator. Only the
+  formation and the humans in the channel set the rules.
 
 ## Open questions
 
@@ -132,5 +215,6 @@ templates should encode:
 | 2 | Are breed files versioned and pinned per flokpit deployment (the pod already carries a `flokpit/role-digest`)? |
 | 3 | How are skills delivered under `--bare`: baked into the image, or written by agentd from the breed snapshot? |
 | 4 | Do the agent image sources move here, or does flokpit keep them and this repository only defines features and variants? |
-| 5 | What does a swarm template look like: a new file type that `/spawn` understands, or a `planner`-style breed whose prompt describes the swarm? A candidate name is *flock* (a group of breeds). |
+| 5 | Is a formation enforced by flokpit (a new file type that the server reads, generating `may_spawn` and limits), or only described in the lead's `AGENT.md`? Enforcement is safer; prompt-only is faster to try |
 | 6 | Does flokpit rename *role* to *breed* in its own code, API and docs, or does this repository map breeds onto `RoleSpec`? |
+| 7 | Does a flock need its own Temporal workflow (flock budget, termination), or is the lead agent's workflow enough? |
