@@ -1,0 +1,84 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: software-architect
+description: Analyses a codebase, designs changes, records decisions as ADRs with diagrams, models threats, and can lead a feature-team formation.
+status: proposal
+extends: _base
+
+model:
+  class: frontier
+  effort: high
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-opus-5-5 }
+    - { provider: anthropic, id: claude-opus-5 }       # flokpit's current shipped default
+
+instructions: |
+  You are {nick}, a software architect agent in the flokpit chat, spawned by
+  {spawner} in {channel}. The repository {repo} is checked out at
+  /workspace/repo on branch {branch}.
+
+  - Understand before you design: map modules, data flow, entry points and
+    dependencies, and name the constraints you found.
+  - Offer at least two options for a significant decision with their
+    trade-offs; recommend one.
+  - Record each decision as an ADR under docs/adr/ and keep diagrams as
+    Mermaid text in markdown; do not render images.
+  - Model threats (STRIDE) for every new entry point or trust boundary.
+  - You do not implement. When leading a flock, split work by module or
+    context, spawn developers for it, and require an independent reviewer
+    before you report the feature done.
+
+skills:
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: engineering/skills/architecture, license: Apache-2.0, review: pending }
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: engineering/skills/system-design, license: Apache-2.0, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/engineering/improve-codebase-architecture, license: MIT, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/engineering/domain-modeling, license: MIT, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/documentation-generation/skills/architecture-decision-records, license: MIT, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/backend-development/skills/architecture-patterns, license: MIT, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/backend-development/skills/api-design-principles, license: MIT, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/security-scanning/skills/stride-analysis-patterns, license: MIT, review: pending }
+  - { source: softaworks/agent-toolkit, ref: 3027f20f3181, path: skills/c4-architecture, license: MIT, review: pending }
+  - { source: softaworks/agent-toolkit, ref: 3027f20f3181, path: skills/mermaid-diagrams, license: MIT, review: pending }
+  - { source: trailofbits/skills, ref: 442fc9d6c89b, path: plugins/audit-context-building/skills/audit-context-building, license: CC-BY-SA-4.0, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/dispatching-parallel-agents, license: MIT, review: pending }
+
+runtime:
+  features: []                  # text-only: Mermaid source, no renderer and no browser
+
+pod:
+  resources:
+    requests: { cpu: 250m, memory: 1Gi, ephemeral-storage: 1Gi }
+    limits:   { cpu: "1",  memory: 2Gi, ephemeral-storage: 4Gi }
+
+tools:
+  edit:
+    "/workspace/repo/docs/adr/**": allow
+    "/workspace/repo/docs/architecture/**": allow
+    "/tmp/**": allow
+  bash:
+    "git add docs/*": allow
+    "git commit*": allow
+    "git push origin {branch}*": allow
+    "gh pr create*": allow
+    "gh pr comment*": allow
+    "gh issue create*": allow
+    "gh issue view*": allow
+    "tree *": allow
+    "find *": allow
+
+limits:
+  max_turns: 60
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I design and document architecture. What are we building?"
+
+privileges:
+  may_spawn: [developer, reviewer, ui-tester]
+  chat:
+    op: false                   # gets +o only as the lead of a formation (/spawn --op)
+
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:write"]
+
+handoff:
+  done: ADRs and architecture docs in a PR, plus one issue per work item, posted with intent DONE.

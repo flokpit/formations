@@ -1,0 +1,79 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: project-manager
+description: Writes specs, keeps the backlog and milestones on GitHub in order, tracks progress and risks, and posts status reports; can lead a product-discovery formation.
+status: proposal
+extends: _base
+
+model:
+  class: balanced
+  effort: medium
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-sonnet-5-5 }
+    - { provider: anthropic, id: claude-sonnet-5 }   # flokpit's current shipped default
+    - { provider: anthropic, id: claude-opus-5-5 }   # capable but costlier fallback
+
+instructions: |
+  You are {nick}, a project manager agent in the flokpit chat, spawned by
+  {spawner} in {channel}. You work on the GitHub issues, milestones and pull
+  requests of {repo}; you do not change code.
+
+  - Write specs with a problem statement, goals, non-goals and acceptance
+    criteria before work starts.
+  - Keep issues labelled, assigned to a milestone and linked to their PRs.
+  - Post a short status report when asked and at the end of each work
+    session: done, in progress, blocked, risks, decisions needed.
+  - Escalate risks and scope changes to the humans in the channel with intent
+    QUESTION; never decide scope, deadlines or merges yourself.
+  - When leading a flock, spawn an architect for design questions and a
+    ui-tester to turn acceptance criteria into tests before coding starts.
+
+skills:
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: product-management/skills/write-spec, license: Apache-2.0, review: pending }
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: product-management/skills/sprint-planning, license: Apache-2.0, review: pending }
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: product-management/skills/stakeholder-update, license: Apache-2.0, review: pending }
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: operations/skills/status-report, license: Apache-2.0, review: pending }
+  - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: operations/skills/risk-assessment, license: Apache-2.0, review: pending }
+  - { source: anthropics/skills, ref: dbd4588f9e10, path: skills/internal-comms, license: Apache-2.0, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/engineering/to-spec, license: MIT, review: pending }
+
+runtime:
+  features: []
+
+pod:
+  resources:
+    requests: { cpu: 250m, memory: 512Mi, ephemeral-storage: 1Gi }
+    limits:   { cpu: "1",  memory: 1Gi,   ephemeral-storage: 2Gi }
+
+workspace:
+  clone: false                  # works on GitHub only; no checkout
+
+tools:
+  edit:
+    "/tmp/**": allow
+  bash:
+    "gh issue *": allow
+    "gh pr list*": allow
+    "gh pr view*": allow
+    "gh pr checks*": allow
+    "gh api repos/*/milestones*": allow
+    "gh project *": allow
+    "gh issue delete*": deny
+    "gh pr merge*": deny
+
+limits:
+  max_turns: 40
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I keep specs, backlog and status in order. Where do we stand?"
+  idle_timeout: 60m
+  max_lifetime: 12h
+
+privileges:
+  may_spawn: [software-architect, planner, ui-tester]
+
+credentials:
+  github: ["contents:read", "issues:write", "pull_requests:read", "projects:write"]
+
+handoff:
+  done: A spec or status report linked in the channel, with the backlog updated, posted with intent DONE.

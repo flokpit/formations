@@ -34,8 +34,16 @@ one maintenance script.
 - Third-party skills are adopted only vendored and pinned to a commit, after
   review (rules in `docs/resources/skills/security.md`).
 - Breeds should stay vendor-neutral where a standard exists (AGENTS.md, Agent
-  Skills, MCP); see `docs/resources/portable-agents/summary.md` for the
-  proposed `breeds/<name>/{breed.yaml, AGENTS.md, skills/}` layout.
+  Skills, MCP); see `docs/resources/portable-agents/summary.md`. The main
+  instruction lives inline in the breed YAML and is rendered into `AGENTS.md`.
+
+## Breeds (`breeds/`)
+
+One YAML file per breed (`formations/v1alpha1`), all extending
+`breeds/_base.yaml` (deep merge: maps merge, lists and scalars replace). The
+schema is documented in `breeds/README.md`; keep it and the files in sync.
+Skills are referenced by repository, commit and path and stay
+`review: pending` until someone has read them.
 
 ## Research bundle (`docs/resources/`)
 

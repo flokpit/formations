@@ -1,0 +1,87 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: ui-tester
+description: Tests web UIs in a headless browser, writes end-to-end tests, audits accessibility and reports failures with screenshots.
+status: proposal
+extends: _base
+
+model:
+  class: balanced
+  effort: medium
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-sonnet-5-5 }
+    - { provider: anthropic, id: claude-sonnet-5 }   # flokpit's current shipped default
+    - { provider: anthropic, id: claude-opus-5-5 }   # capable but costlier fallback
+
+instructions: |
+  You are {nick}, a UI tester agent in the flokpit chat, spawned by {spawner}
+  in {channel}. The repository {repo} is checked out at /workspace/repo on
+  branch {branch}.
+
+  - Start the application locally and test it in a headless browser only.
+  - Test the user flows you are asked about, then edge cases: empty states,
+    errors, slow responses, keyboard-only use, small screens.
+  - Check accessibility (WCAG 2.2 AA) on every page you touch.
+  - Turn every confirmed bug into a failing end-to-end test under tests/e2e/.
+    Do not change application code.
+  - Report failures with steps to reproduce, expected and actual behaviour
+    and a screenshot path; post BLOCKED if the app does not start.
+
+skills:
+  - { source: anthropics/skills, ref: dbd4588f9e10, path: skills/webapp-testing, license: Apache-2.0, review: pending }
+  - { source: microsoft/playwright-cli, ref: b85c7a736bb4, path: skills/playwright-cli, license: Apache-2.0, review: pending }
+  - { source: vercel-labs/agent-browser, ref: d9570915f4dd, path: skills/agent-browser, license: Apache-2.0, review: pending }
+  - { source: ChromeDevTools/chrome-devtools-mcp, ref: d250bc5cd14d, path: skills/a11y-debugging, license: Apache-2.0, review: pending }
+  - { source: ChromeDevTools/chrome-devtools-mcp, ref: d250bc5cd14d, path: skills/chrome-devtools-cli, license: Apache-2.0, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/accessibility-compliance/skills/wcag-audit-patterns, license: MIT, review: pending }
+  - { source: wshobson/agents, ref: 46891e7e60da, path: plugins/developer-essentials/skills/e2e-testing-patterns, license: MIT, review: pending }
+  - { source: softaworks/agent-toolkit, ref: 3027f20f3181, path: skills/qa-test-planner, license: MIT, review: pending }
+
+runtime:
+  image: browser                # variant of base with Chromium baked in; no browser downloads at runtime
+  features:
+    - { id: "ghcr.io/devcontainers/features/node:1", options: { version: "22" } }
+    - { id: "ghcr.io/devcontainers/features/python:1", options: { version: "3.12" } }
+    - { id: "local:features/playwright", options: { browsers: chromium, headless_shell: true } }   # to be written; no official feature exists
+
+pod:
+  resources:
+    requests: { cpu: "1", memory: 2Gi, ephemeral-storage: 3Gi }
+    limits:   { cpu: "2", memory: 4Gi, ephemeral-storage: 8Gi }
+
+os:
+  writable_paths: [/workspace, /home/agent, /tmp, /dev/shm]
+  tmp_size: 2Gi
+  network:
+    allow: [github.com, api.github.com, codeload.github.com, registry.npmjs.org, pypi.org, files.pythonhosted.org, localhost]
+
+tools:
+  edit:
+    "/workspace/repo/tests/e2e/**": allow
+    "/workspace/repo/playwright.config.*": allow
+    "/tmp/**": allow
+  bash:
+    "git add tests/e2e*": allow
+    "git commit*": allow
+    "git push origin {branch}*": allow
+    "gh pr create*": allow
+    "gh pr comment*": allow
+    "npm *": allow
+    "npx *": allow
+    "pnpm *": allow
+    "node *": allow
+    "python3 *": allow
+    "playwright-cli *": allow
+    "agent-browser *": allow
+
+limits:
+  max_turns: 60
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I test UIs in a headless browser. What should I test?"
+
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write"]
+
+handoff:
+  done: A test report (passed and failed flows, accessibility findings, screenshots) and a PR with new e2e tests, posted with intent DONE.

@@ -1,0 +1,92 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: developer
+description: Implements features and fixes on its own branch with tests, pushes and opens a pull request.
+status: proposal
+extends: _base
+
+model:
+  class: frontier
+  effort: high
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-opus-5-5 }
+    - { provider: anthropic, id: claude-opus-5 }       # flokpit's current shipped default
+
+instructions: |
+  You are {nick}, a software developer agent in the flokpit chat, spawned by
+  {spawner} in {channel}. The repository {repo} is checked out at
+  /workspace/repo on branch {branch}. Work only on that branch.
+
+  - Write a failing test first, then the code that makes it pass.
+  - Find the root cause before fixing a bug; do not patch symptoms.
+  - Run the project's tests and linters before you claim anything works.
+  - Keep PROGRESS.md in the repository up to date with what is done and next.
+  - Push before you say something is done, open a pull request against the
+    default branch, and request review in the channel with the PR link.
+  - Never push to the default branch and never merge your own pull request.
+
+skills:
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/test-driven-development, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/systematic-debugging, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/executing-plans, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/verification-before-completion, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/requesting-code-review, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/receiving-code-review, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/finishing-a-development-branch, license: MIT, review: pending }
+
+runtime:
+  features:
+    - { id: "ghcr.io/devcontainers/features/node:1", options: { version: "22" } }
+    - { id: "ghcr.io/devcontainers/features/python:1", options: { version: "3.12" } }
+
+pod:
+  resources:
+    requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
+    limits:   { cpu: "2",  memory: 3Gi, ephemeral-storage: 8Gi }
+
+os:
+  network:
+    allow:
+      - github.com
+      - api.github.com
+      - codeload.github.com
+      - registry.npmjs.org
+      - pypi.org
+      - files.pythonhosted.org
+
+tools:
+  edit:
+    "/workspace/**": allow
+    "/tmp/**": allow
+  bash:
+    "git *": allow
+    "git push * main": deny
+    "git push * master": deny
+    "git push --force*": deny
+    "gh pr create*": allow
+    "gh pr view*": allow
+    "gh pr comment*": allow
+    "gh issue view*": allow
+    "gh issue comment*": allow
+    "gh pr merge*": deny
+    "npm *": allow
+    "npx *": allow
+    "pnpm *": allow
+    "bun *": allow
+    "node *": allow
+    "python3 *": allow
+    "uv *": allow
+    "make *": allow
+
+limits:
+  max_turns: 60
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
+
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
+
+handoff:
+  done: A pull request link with passing tests, posted with intent DONE.
+  next: reviewer

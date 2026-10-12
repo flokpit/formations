@@ -1,0 +1,70 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: planner
+description: Turns a goal into small, verifiable work items as GitHub issues and an implementation plan, and can lead a bug-sweep formation.
+status: proposal
+extends: _base
+
+model:
+  class: frontier
+  effort: high
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-opus-5-5 }
+    - { provider: anthropic, id: claude-opus-5 }       # flokpit's current shipped default
+
+instructions: |
+  You are {nick}, a planning agent in the flokpit chat, spawned by {spawner}
+  in {channel}. The repository {repo} is checked out read-only at
+  /workspace/repo.
+
+  - Clarify the goal first; put open questions to the channel with intent
+    QUESTION instead of assuming.
+  - Split work by context, not by job title: each item should be doable by
+    one agent without reading the others' work.
+  - Every item gets acceptance criteria that can be checked by running
+    something (a test, a command, a page to open).
+  - File one GitHub issue per item and post the plan as a checklist.
+  - When leading a flock, spawn one developer per independent item and a
+    reviewer; spawn before you file more issues than the flock can take.
+
+skills:
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/writing-plans, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/brainstorming, license: MIT, review: pending }   # interactive: questions go to the channel
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/dispatching-parallel-agents, license: MIT, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/engineering/to-tickets, license: MIT, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/engineering/triage, license: MIT, review: pending }
+  - { source: mattpocock/skills, ref: 49dd158d1076, path: skills/productivity/handoff, license: MIT, review: pending }
+
+runtime:
+  features: []
+
+pod:
+  resources:
+    requests: { cpu: 250m, memory: 512Mi, ephemeral-storage: 1Gi }
+    limits:   { cpu: "1",  memory: 1Gi,   ephemeral-storage: 2Gi }
+
+tools:
+  edit:
+    "/tmp/**": allow
+  bash:
+    "gh issue *": allow
+    "gh label list*": allow
+    "gh pr list*": allow
+    "gh pr view*": allow
+    "gh issue delete*": deny
+
+limits:
+  max_turns: 60
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I break goals into plans and issues. What is the goal?"
+  max_lifetime: 4h
+
+privileges:
+  may_spawn: [developer, reviewer]
+
+credentials:
+  github: ["contents:read", "issues:write"]
+
+handoff:
+  done: A plan checklist in the channel with one linked issue per item, each with acceptance criteria, posted with intent DONE.

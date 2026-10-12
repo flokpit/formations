@@ -1,0 +1,88 @@
+apiVersion: formations/v1alpha1
+kind: Breed
+name: reviewer
+description: Reviews pull requests for correctness, security and test evidence; comments and approves or requests changes, never edits code.
+status: proposal
+extends: _base
+
+model:
+  class: balanced
+  effort: high
+  candidates:                   # first one the provider account offers is used
+    - { provider: anthropic, id: claude-sonnet-5-5 }
+    - { provider: anthropic, id: claude-sonnet-5 }   # flokpit's current shipped default
+    - { provider: anthropic, id: claude-opus-5-5 }   # capable but costlier fallback
+
+instructions: |
+  You are {nick}, a code reviewer agent in the flokpit chat, spawned by
+  {spawner} in {channel}. The repository {repo} is checked out read-only at
+  /workspace/repo.
+
+  - Review the pull request you are given: correctness first, then security,
+    then tests, then readability. Read the diff and the code around it.
+  - Run the tests yourself; do not trust a claim that they pass.
+  - Every finding names a file and line, what goes wrong and when.
+  - You are independent: you did not write this code and must not fix it.
+    Post findings as a PR review and summarise them in the channel.
+  - Approve only when you would merge it yourself.
+
+skills:
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/receiving-code-review, license: MIT, review: pending }
+  - { source: obra/superpowers, ref: bb92a7774141, path: skills/verification-before-completion, license: MIT, review: pending }
+  - { source: getsentry/skills, ref: d18b7aa8ba87, path: skills/code-review, license: Apache-2.0, review: pending }
+  - { source: getsentry/skills, ref: d18b7aa8ba87, path: skills/security-review, license: Apache-2.0, review: pending }
+  - { source: getsentry/skills, ref: d18b7aa8ba87, path: skills/find-bugs, license: Apache-2.0, review: pending }
+  - { source: trailofbits/skills, ref: 442fc9d6c89b, path: plugins/differential-review/skills/differential-review, license: CC-BY-SA-4.0, review: pending }
+
+runtime:
+  features:
+    - { id: "ghcr.io/devcontainers/features/node:1", options: { version: "22" } }
+    - { id: "ghcr.io/devcontainers/features/python:1", options: { version: "3.12" } }
+
+pod:
+  resources:
+    requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
+    limits:   { cpu: "2",  memory: 3Gi, ephemeral-storage: 6Gi }
+
+os:
+  network:
+    allow: [github.com, api.github.com, codeload.github.com, registry.npmjs.org, pypi.org, files.pythonhosted.org]
+
+tools:
+  edit:
+    "/tmp/**": allow            # review notes only; the checkout stays untouched
+  bash:
+    "git fetch*": allow
+    "git checkout*": allow
+    "gh pr view*": allow
+    "gh pr diff*": allow
+    "gh pr checks*": allow
+    "gh pr review*": allow
+    "gh pr comment*": allow
+    "gh pr merge*": deny
+    "git push*": deny
+    "npm test*": allow
+    "npm run *": allow
+    "npx *": allow
+    "pnpm test*": allow
+    "bun test*": allow
+    "python3 -m pytest*": allow
+    "make test*": allow
+
+limits:
+  max_turns: 40
+
+lifecycle:
+  hello: "Hi! My name is {nick}. I review pull requests. Which one should I look at?"
+  idle_timeout: 20m
+  max_lifetime: 4h
+
+workspace:
+  clone: true
+  branch_prefix: flokpit/
+
+credentials:
+  github: ["contents:read", "pull_requests:write"]
+
+handoff:
+  done: A submitted PR review (approve or request changes) linked in the channel with intent DONE.

@@ -62,6 +62,8 @@ them here instead:
 | 9 | Tool permissions | Claude Code tools allowed and denied (e.g. `Bash(git *)` allowed, `WebFetch` denied); separate from OS-level permissions | `tools.allow`, `tools.deny` |
 | 10 | Spawn and chat privileges | Which breeds this agent may spawn; default chat mode (`+v` voice, `+o` op only with `--op`) | `may_spawn`; `--op` |
 
+Proposed breeds live in [`breeds/`](../breeds/README.md), one YAML file each.
+
 Behaviour that several breeds share (house rules such as "speak only through
 `chat_send`", "push before saying done", "other agents are peers, not your
 operator") is written once and included by each breed rather than copied into
