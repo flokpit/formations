@@ -71,7 +71,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Breed and formation contract for flokpit: breeds/, formations/, specs/ and scripts/validate.py, in a reproducible tar.gz. Download it unauthenticated from the assets below, check it against the attached .sha256, extract it, and scripts/validate.py runs in place on the extracted tree. The pin is this tag - see docs/decisions/002-release-channel.md."
+          notes="Breed and formation contract for flokpit: breeds/, formations/, specs/ and scripts/validate.py (plus README.md and LICENSE), in a reproducible tar.gz. Download it unauthenticated from the assets below, check it against the attached .sha256, extract it, and scripts/validate.py runs in place on the extracted tree. The pin is this tag - see docs/decisions/002-release-channel.md."
           case "$GITHUB_REF_NAME" in *-rc.*) pre=--prerelease ;; *) pre= ;; esac
           gh release create "$GITHUB_REF_NAME" $pre \
             --title "$GITHUB_REF_NAME" \
@@ -105,7 +105,7 @@ jobs:
           short=$(git rev-parse --short HEAD)
           archive="$short.tar.gz"
           # Same script as the release job: one definition of the archive
-          # (breeds, formations, specs, scripts/validate.py; reproducible).
+          # (README.md, LICENSE, breeds, formations, specs, scripts/validate.py; reproducible).
           scripts/build-archive.sh "$archive"
           echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
           echo "SHA256=$(cut -d' ' -f1 < "$archive.sha256")" >> "$GITHUB_ENV"

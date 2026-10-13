@@ -40,9 +40,9 @@
   delete its old `software-architect` / `ui-tester` role files.
 - Remove the deprecated bunny.net `publish` job and its two repository secrets
   once no consumer reads the storage zone any more.
-- `LICENSE` is still missing; public with no licence = all rights reserved, so
-  an on-prem customer may not redistribute the archive. dennisjay names the
-  licence (MIT or Apache-2.0), then a bot commits it.
+- `LICENSE` (MIT, Dennis Jöst) and `README.md` are in the repository and, from
+  the next release on, in the archive. `v0.1.0` predates them; cut `v0.1.1` or
+  `v0.2.0` so a published archive carries the license notice.
 - Open, not decided, both flagged in the memo: whether B-1 sanctions a
   dev-only `FORMATIONS_FOLLOW_LATEST`, and whether `name` is filled in for the
   skills of all six breed files (a follow-up to the schema change).

@@ -22,8 +22,8 @@ flokpit is [`docs/CONCEPT.md`](docs/CONCEPT.md).
 ## Use a release
 
 Releases are human-cut tags (`v0.1.0`, `v0.2.0`, ...). Each one ships a
-reproducible archive with `breeds/`, `formations/`, `specs/` and
-`scripts/validate.py`, plus its checksum. No credentials are needed:
+reproducible archive with `breeds/`, `formations/`, `specs/`,
+`scripts/validate.py`, this README and the LICENSE, plus its checksum. No credentials are needed:
 
 ```sh
 tag=v0.1.0

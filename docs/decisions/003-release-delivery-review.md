@@ -220,9 +220,11 @@ Pin and naming:
 - Archive layout: **no top-level prefix directory**. The four top-level
   entries are `breeds/`, `formations/`, `specs/` (both schemas) and
   `scripts/validate.py` (that exact path, nothing else from `scripts/`).
-  Extraction target equals archive root; the loader should reject any entry
-  that is absolute, contains `..`, or whose first segment is not one of those
-  four.
+  Since the repository got a license, the archive also carries `README.md` and
+  `LICENSE` at the root (not in `v0.1.0`; first in the next release), so there
+  are six top-level entries. Extraction target equals archive root; the loader
+  should reject any entry that is absolute, contains `..`, or whose first
+  segment is not one of those six.
 - Reproducible build, same recipe as `.github/workflows/validate.yml:63-66`,
   with the `--mtime` of the tagged commit.
 
