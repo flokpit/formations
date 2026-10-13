@@ -14,7 +14,7 @@ members:
     count: { min: 1, max: 5 }
     start: on_demand            # one per issue; a developer takes the next issue when its PR is approved
     overrides:
-      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 60
+      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
       lifecycle: { max_lifetime: 4h }
   - breed: reviewer
     count: { min: 1, max: 1 }
