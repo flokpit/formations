@@ -1,9 +1,16 @@
 # 002 - Delivering the contract as GitHub releases of a public repository
 
-Status: **proposed** - endorsed as the contract basis by bot-planner-dennisjay-2
-on 2026-10-13 (`01M4TZ6XK6NPDG1DDCQS60Q300`, option A, flat archive, annotated
-`vX.Y.Z`, rc tags as prereleases); acceptance by dennisjay, the decision owner,
-is still open, as are the five questions in "Open risks and unknowns".
+Status: **accepted** by dennisjay on 2026-10-13 (decision
+`01M4TZB2E18DZ0KPEB0H2211GD`, relayed in #flockpit-dev as
+`01M4TZD76SRZTDAA5BDH11D7HS`): option A - uploaded asset
+`formations-<tag>.tar.gz` plus `SHA256SUMS`, flat archive (`breeds/`,
+`formations/`, `specs/`, `scripts/validate.py`), annotated `vX.Y.Z` with `rc`
+as prerelease, **first tag `v0.1.0`**, tag protection on, and B-1 amended so
+that the digest pins and the tag only names it.
+
+Still open after this acceptance, both listed under "Open risks and unknowns":
+the asset-host rule (the host itself is being measured, not guessed) and the
+budget cap for the developer breed.
 Supersedes the delivery half of
 `docs/decisions/001-contract-delivery-to-flokpit.md` (its option B and its
 decision 9: bunny.net storage zone, `<short sha>.tar.gz`, mutable `LATEST`
@@ -259,10 +266,10 @@ breeds or secrets, and agent tokens have no `workflow` scope.
 | a | Commit `.github/workflows/release.yml` as specified above (tag trigger `v*`, `contents: write`, validate, reproducible tar, `SHA256SUMS`, create release with both assets) | new file `.github/workflows/release.yml` |
 | b | Fix the tar entry list so all four entries are packed: `-cf - breeds formations specs scripts/validate.py` - owed since 001 decision 1; CI and documentation disagree today | `.github/workflows/validate.yml:63-66` vs `CLAUDE.md:80-88` |
 | c | Add the release-asset host to the agent egress allowlist; without it no agent pod can ever fetch an asset | `breeds/_base.yaml:39` (today `[github.com, api.github.com, codeload.github.com]`) |
-| d | The B-1 amendment: the digest pins, the tag only names it (wording proposed under "Answers", item 5) | `docs/CONCEPT.md:330`, plus `:128-136` (5.1 still recommends a submodule) and `:424` (phase-0 row 3 still says `LATEST`) |
+| d | **Approved, pending execution.** The B-1 amendment: the digest pins, the tag only names it (wording under "Answers", item 5) | `docs/CONCEPT.md:330`, plus `:128-136` (5.1 still recommends a submodule) and `:424` (phase-0 row 3 still says `LATEST`) |
 | e | One line "superseded by 002 for the delivery path" in the older memo - I may not edit another memo | `docs/decisions/001-contract-delivery-to-flokpit.md` (status header) |
 | f | Delete the `publish` job and the two repository secrets `FORMATIONS_BUNNY_BUCKET_NAME`, `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; rewrite the archive paragraph | `.github/workflows/validate.yml:40-95`, `CLAUDE.md:80-88` |
-| g | Push the first tag and post tag, sha256 and asset URL in #flockpit-dev; decide tag protection / immutable releases | GitHub, repository settings |
+| g | **Approved, pending execution.** Push the first tag `v0.1.0` and post tag, sha256 and asset URL in #flockpit-dev; tag protection on | GitHub, repository settings |
 
 The asset host in (c) is **measured, not guessed**: bot-developer-bot-planner-denn-4
 probes the `Location` header of a public release asset through the egress proxy
@@ -316,13 +323,14 @@ failed load, never a silently different contract.
   `breeds/_base.yaml:39` too, if agent pods should ever fetch), or the rule is
   relaxed to "exactly one redirect, to one named host". Open for dennisjay and
   the T2 reviewer.
-- **Tag immutability.** A force-pushed tag silently changes what `vX.Y.Z` means
-  for anyone who does not verify the digest. A tag-protection ruleset (or
-  GitHub's immutable-releases setting, if available on this plan) would close
-  that; only dennisjay can configure it. Not decided.
-- **First version number.** `v0.1.0` (everything here is `status: proposal`,
-  `formations/README.md`) or `v1.0.0`? I did not decide; the first tag is
-  dennisjay's call, and T2 cannot finish without a real tag.
+- **Tag immutability: decided** - tag protection is on (decision
+  `01M4TZB2E18DZ0KPEB0H2211GD`). Residual risk: it is a repository setting
+  nobody has verified as applied, and the digest check stays the real
+  safeguard.
+- **First version number: decided** - `v0.1.0`, pre-1.0 while the schema still
+  moves (`status: proposal` everywhere, `formations/README.md`). Residual
+  risk: the tag does not exist yet, so T2 pins a value that is not yet
+  resolvable; the pin must stay configurable and must not be baked in.
 - **The repository does not yet contain the archive contents it documents.**
   Until the tar entry list is fixed (owed since 001, `PROGRESS.md`), a release
   built from the current `publish` recipe would ship two directories instead of
