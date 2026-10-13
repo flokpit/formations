@@ -234,6 +234,11 @@ the preference turned into the rule; one more edit this repository owes.
 
 ### 9 - The pin: approved -> a configured archive key, `LATEST` only notices
 
+**Superseded on 2026-10-13 by `002-release-channel.md`: the pin is a release
+tag and the archive comes from a GitHub release; the bunny.net key below is
+deprecated but still written.** The rest of this section is the original
+record.
+
 Request `01M4T9V8A5R61J65913S0W9DVA` in `#flockpit-dev`, approved 09:37, no
 reason given. flokpit loads a **configured archive key** `<short sha>.tar.gz`;
 `LATEST` may be fetched only to notice and log that a newer key exists.

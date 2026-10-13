@@ -125,15 +125,27 @@ start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 
 ### 5.1 Getting the files into flokpit
 
-Recommended: pin `flokpit/formations` as a **git submodule** at
-`flokpit:vendor/formations` (a commit, never a branch). flokpit reads
-`vendor/formations/breeds` locally and ships it in the `roles` ConfigMap (or a
-new `breeds` ConfigMap) in the cluster, as it does with roles today.
-`FLOKPIT_BREEDS_DIR` configures the path like `FLOKPIT_ROLES_DIR`.
+Decided (`docs/decisions/001-contract-delivery-to-flokpit.md` decision 3,
+`docs/decisions/002-release-channel.md`): the delivery path is the **published
+artifact**, and the artifact is a **GitHub release** of `flokpit/formations`
+with a human-cut tag (`v0.1`, `v0.2`, ...). flokpit pins the tag in its
+configuration and fetches
 
-Alternative: a CI job in `flokpit/formations` publishes a versioned tarball
-or OCI artifact. Choose it only if submodules cause trouble; the requirements
-below hold either way.
+```
+https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz
+```
+
+with no credentials, verifies it against the `.sha256` published next to it,
+extracts it, validates the breeds against the `specs/*.schema.json` from that
+same archive and ships them in the `roles` ConfigMap (or a new `breeds`
+ConfigMap) in the cluster, as it does with roles today. `FLOKPIT_BREEDS_DIR`
+configures the extracted path like `FLOKPIT_ROLES_DIR`.
+
+Previous channel, deprecated but still live: the bunny.net storage key
+`<short sha>.tar.gz` with its `LATEST` pointer. A git submodule at
+`flokpit:vendor/formations` (a commit, never a branch) stays a valid fallback
+if release downloads ever cause trouble; the requirements below hold either
+way.
 
 ### 5.2 Loading and resolving breeds (phase 1)
 
@@ -327,7 +339,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 
 | Id | Requirement |
 |---|---|
-| B-1 | flokpit MUST load breeds from a pinned commit of `flokpit/formations`; it MUST NOT follow a branch at runtime. |
+| B-1 | flokpit MUST load breeds from a pinned release tag of `flokpit/formations` (5.1); it MUST NOT follow a branch, and MUST NOT resolve the deprecated bunny.net `LATEST` pointer, at runtime. |
 | B-2 | Every breed file MUST validate against `specs/breed.schema.json`, and every resolved breed against `#/$defs/resolved`. An invalid breed MUST NOT be spawnable; flokpit MUST report it at startup (like `loadRoles` errors today) and keep serving the valid ones. |
 | B-3 | Resolution MUST use the merge rule of 4.1 exactly (maps merge, lists and scalars replace). |
 | B-4 | The rendered `Role` MUST pass the existing strict `Role` schema and the agentd `RoleSpec` parity test. |
@@ -421,7 +433,7 @@ ids is `docs/decisions/001-contract-delivery-to-flokpit.md`.
 |---|---|---|---|
 | 1 | Rename roles to breeds in flokpit's code, API and UI, or keep `Role` internally and only render? | full rename (cleaner, larger PR) / internal `Role` with breed loader | internal `Role` with a breed loader for phase 1; user-facing text says "breed" (B-8) |
 | 2 | Name conflicts | rename flokpit `architect`, `tester` / rename the breeds | rename the breeds: `architect` to `architect`, `tester` to `tester`; flokpit keeps its role names (B-11), the clash is resolved by B-10 |
-| 3 | Delivery of `flokpit/formations` | git submodule / published artifact | the published artifact: flokpit loads a configured `<short sha>.tar.gz` key, `LATEST` may only be fetched to notice and log a newer key (B-1); the archive carries `breeds/`, `formations/`, `specs/` and `scripts/validate.py` |
+| 3 | Delivery of `flokpit/formations` | git submodule / published artifact | the published artifact, as a **GitHub release** with a human-cut tag: flokpit pins the tag and downloads `formations-<tag>.tar.gz` unauthenticated (B-1, 5.1, decision 002); the bunny.net key `<short sha>.tar.gz` plus `LATEST` is deprecated but still written; the archive carries `breeds/`, `formations/`, `specs/` and `scripts/validate.py` |
 | 4 | Echo runtime for breeds | keep `hello` as a role / add `runtime` to the breed schema | decided for phase 1: `hello` stays a role; an optional `runtime` in the breed schema stays the recorded alternative for a later phase (B-9) |
 | 5 | Commands | `/fly` + `/land` / `/spawn --formation` + `/kill --flock` | `/fly <formation>` and `/land <flock>`, with `/spawn --formation <name>` kept as a deprecated alias (5.9); `/kill --flock` is not the vocabulary |
 | 6 | Where content termination conditions are judged | lead declares, human confirms / verifier agent / workflow heuristics | the lead declares with intent `DONE` and a human op confirms; no verifier agent and no workflow heuristics. `limits_reached` and `no_progress_rounds` stay workflow-detected (F-3, F-4) |
