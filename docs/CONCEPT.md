@@ -273,8 +273,8 @@ design. Delivery path:
 
 ### 5.9 Formations (phase 3)
 
-**Start.** `/fly <formation> [--repo url] [--task "..."]` (alias `/spawn
---formation <name>`), REST and WS equivalents, ops only. flokpit:
+**Start.** `/fly <formation> [--repo url] [--task "..."]` (deprecated alias
+`/spawn --formation <name>`), REST and WS equivalents, ops only. flokpit:
 
 1. validates the formation (4.2, F-1 to F-4) and the caller's rights;
 2. creates the flock channel if `channel.create` (name from `channel.name`
@@ -307,9 +307,6 @@ id `flock:<org>:<flock>`) owns the flock state:
   the lead is killed.
 - **Escalation** is prompt-level: the lead is instructed to ask with intent
   `QUESTION`; merges are additionally blocked by tool permissions.
-
-The vocabulary (`/fly`, `/land`) is a proposal; agree on it before
-implementing.
 
 ## 6. Implementation plan
 
