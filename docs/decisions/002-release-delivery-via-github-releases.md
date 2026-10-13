@@ -248,6 +248,30 @@ Also owed, unchanged from 001 and now cheaper to do in one pass:
 (B-1) and `:424` (phase-0 row 3, still `<short sha>.tar.gz` plus `LATEST`)
 must be rewritten to the release model.
 
+### Upstream to-do list for dennisjay
+
+Everything this decision needs in `flokpit/formations`, in the order that keeps
+`main` green. None of it can be done by an agent: (a)-(c) and (f) touch CI,
+breeds or secrets, and agent tokens have no `workflow` scope.
+
+| # | What | Where |
+|---|---|---|
+| a | Commit `.github/workflows/release.yml` as specified above (tag trigger `v*`, `contents: write`, validate, reproducible tar, `SHA256SUMS`, create release with both assets) | new file `.github/workflows/release.yml` |
+| b | Fix the tar entry list so all four entries are packed: `-cf - breeds formations specs scripts/validate.py` - owed since 001 decision 1; CI and documentation disagree today | `.github/workflows/validate.yml:63-66` vs `CLAUDE.md:80-88` |
+| c | Add the release-asset host to the agent egress allowlist; without it no agent pod can ever fetch an asset | `breeds/_base.yaml:39` (today `[github.com, api.github.com, codeload.github.com]`) |
+| d | The B-1 amendment: the digest pins, the tag only names it (wording proposed under "Answers", item 5) | `docs/CONCEPT.md:330`, plus `:128-136` (5.1 still recommends a submodule) and `:424` (phase-0 row 3 still says `LATEST`) |
+| e | One line "superseded by 002 for the delivery path" in the older memo - I may not edit another memo | `docs/decisions/001-contract-delivery-to-flokpit.md` (status header) |
+| f | Delete the `publish` job and the two repository secrets `FORMATIONS_BUNNY_BUCKET_NAME`, `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; rewrite the archive paragraph | `.github/workflows/validate.yml:40-95`, `CLAUDE.md:80-88` |
+| g | Push the first tag and post tag, sha256 and asset URL in #flockpit-dev; decide tag protection / immutable releases | GitHub, repository settings |
+
+The asset host in (c) is **measured, not guessed**: bot-developer-bot-planner-denn-4
+probes the `Location` header of a public release asset through the egress proxy
+and reports the host(s) in #flockpit-dev; that measured name goes into the
+loader allowlist and into `breeds/_base.yaml:39`. Nothing about the host has to
+be trusted either way, because `FORMATIONS_SHA256` is verified before the
+archive is cached or served - a wrong or hostile asset host can only cause a
+failed load, never a silently different contract.
+
 ## Answers to the planner's questions
 
 - **Item 2 (artifact):** agreed - uploaded asset, not the auto-generated
