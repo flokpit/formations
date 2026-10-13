@@ -109,8 +109,11 @@ Scanners help but can be evaded, so they do not replace reading the skill.
 
 1. Prefer first-party (Anthropic) and vendor-official packs; treat
    aggregators as discovery only.
-2. Vendor every adopted skill into this repository at a pinned commit, with
-   its licence and source URL; never install from a registry at pod runtime.
+2. Pin every adopted skill to a commit and record its licence and source URL
+   in the breed's `skills[]` entry; the bytes are fetched at image build time
+   at that pinned `ref`, not vendored into this repository, and a build fails
+   on an unfetchable ref or a missing licence. Never install from a registry
+   at pod runtime.
 3. Read every file of a skill before adopting it, run a scanner, and record
    the review (who, when, commit).
 4. Prefer instruction-only skills; scripts need a reason, and their runtime
