@@ -58,8 +58,8 @@ says what has changed on `main` since:
   phase-0 row 3 and `CLAUDE.md` describe the release model; 001 carries its
   "superseded" pointer. The `release` job is now in `validate.yml`. Still owed to a human (agent
   tokens have no `workflow` scope): pushing the tag `v0.1.0`, tag protection, the asset-host allowlist and
-  the repository-visibility check. The job does not yet check the tag against
-  the regex below.
+  the repository-visibility check. The job checks the tag against the regex
+  below and marks `-rc` releases as prerelease.
 
 ## Stakeholders
 
@@ -277,7 +277,7 @@ scope.
 
 | # | What | Where |
 |---|---|---|
-| a | **Applied** except the tag-format check (a `release` job in `validate.yml`: tag trigger `v*`, `contents: write`, after validation, `scripts/build-archive.sh`, release with both assets) ; add the check. This replaces the separate `release.yml` specified above | `.github/workflows/validate.yml` |
+| a | **Applied**, including the tag-format check (a `release` job in `validate.yml`: tag trigger `v*`, `contents: write`, after validation, `scripts/build-archive.sh`, release with both assets). This replaces the separate `release.yml` specified above | `.github/workflows/validate.yml` |
 | b | **Done** in `scripts/build-archive.sh`; the same patch makes the `publish` job call it | `scripts/build-archive.sh` |
 | c | Add the release-asset host to the agent egress allowlist; without it no agent pod can ever fetch an asset | `breeds/_base.yaml:39` (today `[github.com, api.github.com, codeload.github.com]`) |
 | d | **Done** (5.1 and phase-0 row 3 by 002; B-1 digest wording in this reconciliation) | `docs/CONCEPT.md` |

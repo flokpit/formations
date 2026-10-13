@@ -29,8 +29,9 @@
   validation matrix, then `gh release create` attaches
   `formations-<tag>.tar.gz` + `.sha256`; the bunny.net job uses
   `scripts/build-archive.sh` and is marked deprecated. This closes issue #1
-  (`specs/` and the validator in the archive). Still to add: a tag-format check
-  (`^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$`, see decision 003).
+  (`specs/` and the validator in the archive). The job rejects tags that
+  are not `vX.Y.Z` or `vX.Y.Z-rc.N` (decision 003); `-rc` releases are marked
+  prerelease.
 - A human merges the release-channel PR and then pushes the tag `v0.1.0`; the
   `release` job publishes the first archive that contains `specs/` and
   `scripts/validate.py`. Agents cannot do either: no merge rights, and
