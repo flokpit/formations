@@ -11,9 +11,14 @@
   of `docs/resources/skills/security.md`, the optional `name` in
   `$defs/skill`, the breed rename `software-architect` to `architect` and
   `ui-tester` to `tester`, and the decision memo itself.
+- 2026-10-13: decision 13 (item 10): `breeds/developer.yaml` `max_turns` 60 ->
+  512, with the narrowing comment in `formations/bug-sweep.yaml` corrected.
 
 ## Next
 
+- `.github/workflows/validate.yml` still needs the one-line tar change
+  (`-cf - breeds formations specs scripts/validate.py`); the agent token has
+  no `workflow` scope, so a human has to commit that line.
 - A human merges that PR; then the publish job writes the first archive that
   contains `specs/` and `scripts/validate.py`.
 - Only after that archive is published may flokpit bump its pin and delete its
