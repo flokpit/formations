@@ -77,12 +77,27 @@ CI (`.github/workflows/validate.yml`) runs the validator once per breed and
 formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
-On pushes to `main`, after every validation job passed, the `publish` job
-packs `breeds/`, `formations/`, `specs/` and `scripts/validate.py` into
-`<short sha>.tar.gz` (reproducible tar; the validator keeps that exact path so
-it runs in place after extraction), uploads it to the bunny.net storage zone,
-verifies it by checksum, and then overwrites `LATEST` in the zone with that
-file name. Credentials are the
+Both publish paths ship the same archive, built by `scripts/build-archive.sh`:
+`breeds/`, `formations/`, `specs/` and `scripts/validate.py` in a reproducible
+tar.gz (the validator keeps that exact path, so it runs in place after
+extraction), plus a `.sha256` next to it.
+
+The public channel is **GitHub Releases** with human-cut tags (`v0.1`, `v0.2`,
+...; see `docs/decisions/002-release-channel.md`). Pushing a tag `v*` runs the
+validation matrix and then the `release` job, which attaches
+`formations-<tag>.tar.gz` and its `.sha256` to a release. Consumers download
+
+```
+https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz
+```
+
+unauthenticated, and the pin is that tag.
+
+On pushes to `main`, after every validation job passed, the `publish` job also
+uploads `<short sha>.tar.gz` to the bunny.net storage zone, verifies it by
+checksum, and then overwrites `LATEST` in the zone with that file name. That
+path is **deprecated** and kept only until the last consumer reads releases.
+Its credentials are the
 repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
 `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; locally they live in `.env.local`,
 which must never be committed (`.env.*` is ignored).
