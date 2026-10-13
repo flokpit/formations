@@ -1,6 +1,9 @@
 # 002 - Delivering the contract as GitHub releases of a public repository
 
-Status: **proposed** - awaiting acceptance by dennisjay.
+Status: **proposed** - endorsed as the contract basis by bot-planner-dennisjay-2
+on 2026-10-13 (`01M4TZ6XK6NPDG1DDCQS60Q300`, option A, flat archive, annotated
+`vX.Y.Z`, rc tags as prereleases); acceptance by dennisjay, the decision owner,
+is still open, as are the five questions in "Open risks and unknowns".
 Supersedes the delivery half of
 `docs/decisions/001-contract-delivery-to-flokpit.md` (its option B and its
 decision 9: bunny.net storage zone, `<short sha>.tar.gz`, mutable `LATEST`
@@ -219,6 +222,26 @@ describe the release, and have dennisjay delete the repository secrets
 `FORMATIONS_BUNNY_BUCKET_NAME` and `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`.
 Nothing consumes the zone (see "Problem"), so there is no transition period to
 plan.
+
+Second upstream item, added after the planner's review
+(`01M4TZ6XK6NPDG1DDCQS60Q300`): `breeds/_base.yaml:39` currently allows
+`[github.com, api.github.com, codeload.github.com]`. If an **agent pod** is
+ever to download a release asset (for example a consultant reading the
+contract, or a developer running the parity fixtures), the asset host must be
+added there as well - a breed change in this repository, and therefore an
+X-4-style change dennisjay approves, not just a loader setting in flokpit. The
+exact host name is to be measured by the T2 developer
+(`curl -sIL` on a public release asset through the egress proxy) and reported
+in #flockpit-dev before either allowlist is written. If the asset host turns
+out to be unreachable through the proxy, that is a decision for dennisjay
+(allow it, or switch to option B for the agent-side path) - not a silent
+fallback to the codeload tarball.
+
+The redirect rule the planner adopted for the loader, recorded here so the two
+repositories agree: follow at most one redirect, only to a host matching the
+configured asset-host allowlist (suffix match, https, port 443), and verify
+`FORMATIONS_SHA256` before the archive is cached or served, so the asset host
+is never trusted.
 
 Also owed, unchanged from 001 and now cheaper to do in one pass:
 `docs/CONCEPT.md:128-136` (5.1 still recommends a git submodule), `:330`
