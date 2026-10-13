@@ -455,6 +455,45 @@ reject the duplicate and require the role file to be deleted. The rename here
 and the collision rule there must land together, otherwise `architect` and
 `tester` behave differently from every other breed.
 
+### 13 - Developer `max_turns` raised to 512: instructed by dennisjay
+
+Not a decision request of mine; dennisjay instructed it directly in
+`#flokpit-formations-dev` at 09:50 (message `01M4TAQYYXN9VRQCZVX97VZF7J`):
+"increase the max turns for a developer breed to 512". Recorded here because it
+changes a shipped contract file and therefore the published archive.
+
+The edit is one line, `breeds/developer.yaml:82`, `max_turns: 60` becomes
+`max_turns: 512`. It is schema-legal without any schema change:
+`specs/breed.schema.json:172` constrains `max_turns` only to
+`{"type": "integer", "minimum": 1}`. `breeds/_base.yaml:46` keeps 60 as the
+default for every other breed; only the developer diverges, which is the normal
+shape of a breed overriding its base.
+
+Three consequences the implementer must handle, none of which blocks the edit:
+
+- `formations/bug-sweep.yaml:17` overrides the developer with
+  `limits: { max_turns: 40 }` and the comment "narrowed from the breed's 60".
+  The override stays legal - `scripts/validate.py:129-130` only rejects an
+  override that *widens*, and 40 < 512 narrows - but the comment becomes wrong
+  and should read 512. No other formation overrides developer limits
+  (`formations/feature-team.yaml` has no `overrides` block at all).
+- `breeds/_base.yaml:47` sets `max_budget_usd: 0`, which the file itself
+  annotates as "0 = no cap", and the developer does not override it. So after
+  this change a developer agent may take up to 512 turns per user turn with no
+  monetary ceiling in the contract. Whether a budget cap should accompany the
+  turn increase is a question for dennisjay, not something I decide; it is
+  listed under "Open risks".
+- `tighten_only: true` (`breeds/_base.yaml:49`) means a spawned agent's limits
+  may only be tightened, so the higher value cannot leak upwards into anything
+  a developer spawns. The developer's `privileges.may_spawn` is empty in any
+  case.
+
+Evidence required, as for every other item: `uv run scripts/validate.py` exits
+0 and still prints 6 breeds, 3 formations. I may not make this edit myself (see
+"Out of scope"); it goes to the developer in `#flokpit-formations-dev` as item
+10 of the change set, and it is the one item that changes an operational limit
+rather than a document, so it should be its own commit.
+
 ## Recommendation
 
 Superseded by the decision log: dennisjay chose **B** for the delivery,
@@ -501,6 +540,11 @@ routed through chat and through me.
   `breeds/*.yaml` is still `review: pending` (`breeds/README.md`), so nothing
   can go to production until a human reviews them one by one, and no review has
   happened.
+- Raised by decision 13 (developer `max_turns` 512): the developer inherits
+  `max_budget_usd: 0` from `breeds/_base.yaml:47`, annotated there as "0 = no
+  cap". 512 turns per user turn with no monetary ceiling is a cost question I
+  cannot answer for dennisjay, and he did not mention a budget. Open until he
+  says either "no cap is intended" or gives a number.
 - The schema has no reviewer, date or checksum field for a skill review, while
   `security.md` rule 3 asks for a recorded review (who, when, commit). If that
   record is wanted in the file, it is a schema change (X-4).
