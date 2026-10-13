@@ -339,7 +339,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | B-7 | `privileges.may_spawn` MUST replace `Role.may_spawn` in `maySpawn()` with unchanged semantics (humans unrestricted). |
 | B-8 | User-facing text MUST say "breed"; the API SHOULD accept `role` as a deprecated alias for one release. |
 | B-9 | The smoke test's `hello` agent (runtime `echo`) MUST keep working: either keep `hello.yaml` as a role, or add an optional `runtime` to the breed schema in `flokpit/formations` first. |
-| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them; a breed and a role with the same name MUST NOT coexist. |
+| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them. A breed and a role with the same name MAY coexist: the breed wins, and flokpit MUST log the shadowing once per load. |
 | B-11 | Name mapping MUST be explicit: today `architect` and `tester` correspond to the breeds `software-architect` and `ui-tester`. Decide in phase 0 whether flokpit renames or the breeds are renamed; do not alias silently. |
 
 ### 7.2 Models
