@@ -19,8 +19,8 @@ one maintenance script.
 
 ## Vocabulary
 
-- **Breed**: a kind of agent (developer, reviewer, planner, ui-tester,
-  software-architect, project-manager). flokpit calls this a *role*
+- **Breed**: a kind of agent (developer, reviewer, planner, tester,
+  architect, project-manager). flokpit calls this a *role*
   (`roles/*.yaml`, `RoleSpec` in `../flokpit/docs/concepts/agent_spawner.md`
   section 8); do not use "role" here. A breed defines pod resources, OS
   permissions, skills, the `AGENTS.md` main instruction, runtime features,
@@ -78,9 +78,11 @@ formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
 On pushes to `main`, after every validation job passed, the `publish` job
-packs `breeds/` and `formations/` into `<short sha>.tar.gz` (reproducible tar),
-uploads it to the bunny.net storage zone, verifies it by checksum, and then
-overwrites `LATEST` in the zone with that file name. Credentials are the
+packs `breeds/`, `formations/`, `specs/` and `scripts/validate.py` into
+`<short sha>.tar.gz` (reproducible tar; the validator keeps that exact path so
+it runs in place after extraction), uploads it to the bunny.net storage zone,
+verifies it by checksum, and then overwrites `LATEST` in the zone with that
+file name. Credentials are the
 repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
 `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; locally they live in `.env.local`,
 which must never be committed (`.env.*` is ignored).

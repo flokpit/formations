@@ -79,7 +79,7 @@ tools:
     "make *": allow
 
 limits:
-  max_turns: 60
+  max_turns: 512
 
 lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"

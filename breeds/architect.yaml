@@ -1,6 +1,6 @@
 apiVersion: formations/v1alpha1
 kind: Breed
-name: software-architect
+name: architect
 description: Analyses a codebase, designs changes, records decisions as ADRs with diagrams, models threats, and can lead a feature-team formation.
 status: proposal
 extends: _base
@@ -73,7 +73,7 @@ lifecycle:
   hello: "Hi! My name is {nick}. I design and document architecture. What are we building?"
 
 privileges:
-  may_spawn: [developer, reviewer, ui-tester]
+  may_spawn: [developer, reviewer, tester]
   chat:
     op: false                   # gets +o only as the lead of a formation (/spawn --op)
 

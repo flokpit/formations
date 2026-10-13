@@ -1,12 +1,12 @@
 apiVersion: formations/v1alpha1
 kind: Formation
 name: feature-team
-description: Implements a feature that spans several modules; an architect designs and splits the work, developers build in parallel, an independent reviewer and an optional ui-tester verify.
+description: Implements a feature that spans several modules; an architect designs and splits the work, developers build in parallel, an independent reviewer and an optional tester verify.
 status: proposal
 shape: orchestrator-workers-verifier
 
 lead:
-  breed: software-architect
+  breed: architect
   op: true
 
 members:
@@ -16,12 +16,12 @@ members:
   - breed: reviewer
     count: { min: 1, max: 1 }
     start: with_flock
-  - breed: ui-tester
+  - breed: tester
     count: { min: 0, max: 1 }
     start: on_demand            # only when the feature has a user interface
 
 spawn_tree:
-  software-architect: [developer, reviewer, ui-tester]
+  architect: [developer, reviewer, tester]
 
 work_split: |
   Design first: write an ADR for the feature with the options considered and
@@ -32,10 +32,10 @@ work_split: |
   four at a time.
 
 handoffs:
-  software-architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
+  architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
   developer:          { deliver: PR link with passing tests and the issue it closes, to: reviewer }
-  reviewer:           { deliver: "submitted PR review: approve or request changes", to: software-architect }
-  ui-tester:          { deliver: test report with screenshots and a PR with e2e tests, to: software-architect }
+  reviewer:           { deliver: "submitted PR review: approve or request changes", to: architect }
+  tester:          { deliver: test report with screenshots and a PR with e2e tests, to: architect }
 
 state:
   kind: github-issues
@@ -44,7 +44,7 @@ state:
 
 verification:
   required: [reviewer-approved, ci-green, acceptance-criteria-checked]
-  optional: [ui-tester-passed]
+  optional: [tester-passed]
   verifier_is_not_author: true
 
 termination:
@@ -56,7 +56,7 @@ termination:
   summary: Feature summary with links to the ADR, all PRs and their review state, open risks, and what a human must merge.
 
 limits:
-  max_agents: 7                 # lead + 4 developers + reviewer + ui-tester
+  max_agents: 7                 # lead + 4 developers + reviewer + tester
   max_lifetime: 8h
   max_budget_usd: 0
   turn_budget: 40

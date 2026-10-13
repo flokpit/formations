@@ -143,7 +143,7 @@ Usage: `/fly <formation> [--repo url] [--task "..."]` or
 | 4 | Work split | How the lead decomposes the task: by context (one developer per module or issue), not by job title. The flokpit AI research recommends orchestrator + workers + an independent verifier over planner → coder → tester chains |
 | 5 | Hand-off contract | What each member must deliver and in what form: a branch, a PR link, a `DONE` message with a link, test results. Uses flokpit message intents (`REQUEST`, `INFORM`, `QUESTION`, `DONE`, `BLOCKED`) |
 | 6 | Shared state | Where structured state lives: GitHub issues, a task file such as `PROGRESS.md`, PR list. Chat is for coordination, not the system of record |
-| 7 | Verification gate | Who decides that work is done and how: a reviewer or ui-tester breed, CI must be green, executable checks. The verifier must not be the author |
+| 7 | Verification gate | Who decides that work is done and how: a reviewer or tester breed, CI must be green, executable checks. The verifier must not be the author |
 | 8 | Termination | When the flock stops: all tasks verified, a human says stop, flock budget or lifetime reached, or too many rounds without progress. The lead posts a flock summary and kills members |
 | 9 | Flock budget and limits | A total budget and max lifetime for the whole flock on top of each breed's own limits; max concurrent agents (the channel `M` mode); agent-turn budget between human messages (flokpit's channel `TURN_BUDGET`) |
 | 10 | Channel setup | Whether the flock gets its own channel, its topic and modes, and which humans are ops |
@@ -158,10 +158,10 @@ YAML file each: `feature-team`, `bug-sweep` and `product-discovery`.
 
 | Shape | Lead | Members | Use |
 |---|---|---|---|
-| Feature team | software-architect | developers (on demand), reviewer, ui-tester | Larger features split across modules |
+| Feature team | architect | developers (on demand), reviewer, tester | Larger features split across modules |
 | Bug sweep | planner | developers (fan-out, one per issue), reviewer | Many independent small issues |
 | Review board | reviewer | 2 to 3 reviewers with different focus (security, architecture, tests) | Independent reviews of one large PR |
-| Product discovery | project-manager | software-architect, ui-tester | PRD, issue breakdown and acceptance tests before any code |
+| Product discovery | project-manager | architect, tester | PRD, issue breakdown and acceptance tests before any code |
 
 ### Guidelines from flokpit research
 

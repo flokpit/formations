@@ -250,7 +250,7 @@ design. Delivery path:
 - `runtime.image` selects an image variant built `FROM` the agent image
   (`packages/spawner/image/Dockerfile`). Dev Container Features listed in
   `runtime.features` are installed at image build time, not at boot. The
-  `ui-tester` breed needs a `browser` variant with Chromium and a
+  `tester` breed needs a `browser` variant with Chromium and a
   `local:features/playwright` feature that does not exist yet.
 - `os` is enforced by the pod, not by Claude Code: non-root user, no `sudo`
   binary, read-only root filesystem with emptyDirs for `writable_paths`,
@@ -273,8 +273,8 @@ design. Delivery path:
 
 ### 5.9 Formations (phase 3)
 
-**Start.** `/fly <formation> [--repo url] [--task "..."]` (alias `/spawn
---formation <name>`), REST and WS equivalents, ops only. flokpit:
+**Start.** `/fly <formation> [--repo url] [--task "..."]` (deprecated alias
+`/spawn --formation <name>`), REST and WS equivalents, ops only. flokpit:
 
 1. validates the formation (4.2, F-1 to F-4) and the caller's rights;
 2. creates the flock channel if `channel.create` (name from `channel.name`
@@ -308,9 +308,6 @@ id `flock:<org>:<flock>`) owns the flock state:
 - **Escalation** is prompt-level: the lead is instructed to ask with intent
   `QUESTION`; merges are additionally blocked by tool permissions.
 
-The vocabulary (`/fly`, `/land`) is a proposal; agree on it before
-implementing.
-
 ## 6. Implementation plan
 
 | Phase | Scope | Main code | Done when |
@@ -339,8 +336,8 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | B-7 | `privileges.may_spawn` MUST replace `Role.may_spawn` in `maySpawn()` with unchanged semantics (humans unrestricted). |
 | B-8 | User-facing text MUST say "breed"; the API SHOULD accept `role` as a deprecated alias for one release. |
 | B-9 | The smoke test's `hello` agent (runtime `echo`) MUST keep working: either keep `hello.yaml` as a role, or add an optional `runtime` to the breed schema in `flokpit/formations` first. |
-| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them; a breed and a role with the same name MUST NOT coexist. |
-| B-11 | Name mapping MUST be explicit: today `architect` and `tester` correspond to the breeds `software-architect` and `ui-tester`. Decide in phase 0 whether flokpit renames or the breeds are renamed; do not alias silently. |
+| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them. A breed and a role with the same name MAY coexist: the breed wins, and flokpit MUST log the shadowing once per load. |
+| B-11 | Name mapping MUST be explicit and MUST NOT be aliased silently. Decided in phase 0 (decision 6): the breeds are renamed, `architect` to `architect` and `tester` to `tester`, and flokpit keeps its role names `architect` and `tester`. The resulting name clash is resolved by B-10 (the breed wins). |
 
 ### 7.2 Models
 
@@ -415,16 +412,19 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 - Formations that change themselves at runtime, or nested flocks.
 - Merging, deploying or closing issues on behalf of humans.
 
-## 10. Open decisions (phase 0)
+## 10. Phase-0 decisions
 
-| # | Decision | Options |
-|---|---|---|
-| 1 | Rename roles to breeds in flokpit's code, API and UI, or keep `Role` internally and only render? | full rename (cleaner, larger PR) / internal `Role` with breed loader (recommended for phase 1) |
-| 2 | Name conflicts | rename flokpit `architect`, `tester` / rename the breeds |
-| 3 | Delivery of `flokpit/formations` | git submodule (recommended) / published artifact |
-| 4 | Echo runtime for breeds | keep `hello` as a role / add `runtime` to the breed schema |
-| 5 | Commands | `/fly` + `/land` / `/spawn --formation` + `/kill --flock` |
-| 6 | Where content termination conditions are judged | lead declares, human confirms (recommended) / verifier agent / workflow heuristics |
+All six were decided by dennisjay on 2026-10-13; the record with the request
+ids is `docs/decisions/001-contract-delivery-to-flokpit.md`.
+
+| # | Decision | Options | Decided |
+|---|---|---|---|
+| 1 | Rename roles to breeds in flokpit's code, API and UI, or keep `Role` internally and only render? | full rename (cleaner, larger PR) / internal `Role` with breed loader | internal `Role` with a breed loader for phase 1; user-facing text says "breed" (B-8) |
+| 2 | Name conflicts | rename flokpit `architect`, `tester` / rename the breeds | rename the breeds: `architect` to `architect`, `tester` to `tester`; flokpit keeps its role names (B-11), the clash is resolved by B-10 |
+| 3 | Delivery of `flokpit/formations` | git submodule / published artifact | the published artifact: flokpit loads a configured `<short sha>.tar.gz` key, `LATEST` may only be fetched to notice and log a newer key (B-1); the archive carries `breeds/`, `formations/`, `specs/` and `scripts/validate.py` |
+| 4 | Echo runtime for breeds | keep `hello` as a role / add `runtime` to the breed schema | decided for phase 1: `hello` stays a role; an optional `runtime` in the breed schema stays the recorded alternative for a later phase (B-9) |
+| 5 | Commands | `/fly` + `/land` / `/spawn --formation` + `/kill --flock` | `/fly <formation>` and `/land <flock>`, with `/spawn --formation <name>` kept as a deprecated alias (5.9); `/kill --flock` is not the vocabulary |
+| 6 | Where content termination conditions are judged | lead declares, human confirms / verifier agent / workflow heuristics | the lead declares with intent `DONE` and a human op confirms; no verifier agent and no workflow heuristics. `limits_reached` and `no_progress_rounds` stay workflow-detected (F-3, F-4) |
 
 ## 11. References
 

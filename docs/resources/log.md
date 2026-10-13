@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-13
+* **Update**: Renamed the breeds in [Skills by Breed](/skills/skills-by-breed.md) and [Skills Research Summary](/skills/summary.md): `software-architect` is now `architect` and `ui-tester` is now `tester` (decision 6 of `docs/decisions/001-contract-delivery-to-flokpit.md`). Index pages regenerated with `scripts/okf.py index`.
+* **Update**: Corrected rule 2 of [Security of Third-Party Skills](/skills/security.md): adopted skills are pinned to a commit and fetched at image build time, not vendored into this repository (decision 2 of `docs/decisions/001-contract-delivery-to-flokpit.md`, which follows `docs/CONCEPT.md` 5.6).
+
 ## 2026-10-12
 * **Creation**: Added the [Portable Agents](/portable-agents/summary.md) area from web research: how to define breed features independent of the agent vendor. Pages on [instructions and skills](/portable-agents/instructions-and-skills.md), [custom agent definitions](/portable-agents/agent-definitions.md), [declarative agent specifications](/portable-agents/declarative-specs.md) and [runtime, permissions, MCP, limits and hooks](/portable-agents/runtime-and-permissions.md).
 * **Update**: Aligned the bundle with the OKF v0.2 specification: `resource` removed from synthesis documents, footnotes carry source titles, `index.md` files generated from frontmatter descriptions by `scripts/okf.py`, conventions moved to [Bundle Conventions](/conventions.md).
