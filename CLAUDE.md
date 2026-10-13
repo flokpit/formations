@@ -19,8 +19,8 @@ one maintenance script.
 
 ## Vocabulary
 
-- **Breed**: a kind of agent (developer, reviewer, planner, ui-tester,
-  software-architect, project-manager). flokpit calls this a *role*
+- **Breed**: a kind of agent (developer, reviewer, planner, tester,
+  architect, project-manager). flokpit calls this a *role*
   (`roles/*.yaml`, `RoleSpec` in `../flokpit/docs/concepts/agent_spawner.md`
   section 8); do not use "role" here. A breed defines pod resources, OS
   permissions, skills, the `AGENTS.md` main instruction, runtime features,

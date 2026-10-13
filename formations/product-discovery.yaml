@@ -10,10 +10,10 @@ lead:
   op: true
 
 members:
-  - breed: software-architect
+  - breed: architect
     count: { min: 1, max: 1 }
     start: with_flock
-  - breed: ui-tester
+  - breed: tester
     count: { min: 0, max: 1 }
     start: on_demand            # only for features with a user interface
   - breed: planner
@@ -21,23 +21,23 @@ members:
     start: on_demand            # for large backlogs
 
 spawn_tree:
-  project-manager: [software-architect, ui-tester, planner]
-  software-architect: []        # narrowed: no developers in discovery
+  project-manager: [architect, tester, planner]
+  architect: []        # narrowed: no developers in discovery
 
 work_split: |
   1. The project manager writes the spec (problem, users, goals, non-goals,
      acceptance criteria) and gets it confirmed by a human.
   2. The software architect sketches the architecture and records open
      decisions as ADRs; options, not implementation.
-  3. The ui-tester turns acceptance criteria into failing end-to-end tests
+  3. The tester turns acceptance criteria into failing end-to-end tests
      that define "done" for the later build.
   4. The planner (or the project manager for small scopes) files the backlog:
      one issue per work item, linked to spec, ADRs and tests.
 
 handoffs:
-  project-manager:    { deliver: confirmed spec in a PR, to: software-architect }
-  software-architect: { deliver: ADR PR with options and a recommendation, to: project-manager }
-  ui-tester:          { deliver: PR with failing e2e tests for each acceptance criterion, to: project-manager }
+  project-manager:    { deliver: confirmed spec in a PR, to: architect }
+  architect: { deliver: ADR PR with options and a recommendation, to: project-manager }
+  tester:          { deliver: PR with failing e2e tests for each acceptance criterion, to: project-manager }
   planner:            { deliver: backlog issues with acceptance criteria, to: project-manager }
 
 state:
@@ -59,7 +59,7 @@ termination:
   summary: Links to the spec, ADRs, acceptance-test PR and backlog, plus open questions and the formation recommended for the build (usually feature-team).
 
 limits:
-  max_agents: 4                 # lead + architect + ui-tester + planner
+  max_agents: 4                 # lead + architect + tester + planner
   max_lifetime: 6h
   max_budget_usd: 0
   turn_budget: 40

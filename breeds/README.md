@@ -14,8 +14,8 @@ commit but not yet reviewed (`review: pending`), as required by
 |---|---|---|---|
 | [developer](developer.yaml) | frontier | code on its own branch, PRs | - |
 | [reviewer](reviewer.yaml) | balanced | PR reviews only | - |
-| [ui-tester](ui-tester.yaml) | balanced | e2e tests, test reports | - |
-| [software-architect](software-architect.yaml) | frontier | ADRs, architecture docs | feature team |
+| [tester](tester.yaml) | balanced | e2e tests, test reports | - |
+| [architect](architect.yaml) | frontier | ADRs, architecture docs | feature team |
 | [planner](planner.yaml) | frontier | issues, plans | bug sweep |
 | [project-manager](project-manager.yaml) | balanced | issues, specs, status reports | product discovery |
 

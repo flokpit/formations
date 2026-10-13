@@ -1,6 +1,6 @@
 apiVersion: formations/v1alpha1
 kind: Breed
-name: ui-tester
+name: tester
 description: Tests web UIs in a headless browser, writes end-to-end tests, audits accessibility and reports failures with screenshots.
 status: proposal
 extends: _base

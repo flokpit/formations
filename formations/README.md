@@ -12,9 +12,9 @@ formation text are what make the flock behave.
 
 | Formation | Lead | Members | Shape | Use |
 |---|---|---|---|---|
-| [feature-team](feature-team.yaml) | software-architect | developers (1-4), reviewer, ui-tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
+| [feature-team](feature-team.yaml) | architect | developers (1-4), reviewer, tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
 | [bug-sweep](bug-sweep.yaml) | planner | developers (1-5), reviewer | fan-out, independent verifier | many small, independent issues |
-| [product-discovery](product-discovery.yaml) | project-manager | software-architect, ui-tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
+| [product-discovery](product-discovery.yaml) | project-manager | architect, tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
 
 ## Schema (`formations/v1alpha1`)
 

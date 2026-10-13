@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-10-13
+* **Update**: Renamed the breeds in [Skills by Breed](/skills/skills-by-breed.md) and [Skills Research Summary](/skills/summary.md): `software-architect` is now `architect` and `ui-tester` is now `tester` (decision 6 of `docs/decisions/001-contract-delivery-to-flokpit.md`). Index pages regenerated with `scripts/okf.py index`.
 * **Update**: Corrected rule 2 of [Security of Third-Party Skills](/skills/security.md): adopted skills are pinned to a commit and fetched at image build time, not vendored into this repository (decision 2 of `docs/decisions/001-contract-delivery-to-flokpit.md`, which follows `docs/CONCEPT.md` 5.6).
 
 ## 2026-10-12
