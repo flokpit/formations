@@ -32,7 +32,7 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `name`, `description`, `status` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
 | `pod` | 1. pod specification | `resources.requests`, `resources.limits` (Kubernetes quantities), `workspace_size` |
 | `os` | 2. OS-level permissions | `user`, `sudo`, `root_filesystem`, `writable_paths`, `tmp_size`, `network.egress` (`none`, `allowlist`), `network.allow` (domains) |
-| `skills` | 3. skills | list of `{source, ref, path, license, review}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit |
+| `skills` | 3. skills | list of `{source, ref, path, license, review, name?}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit; optional `name` is the install directory (`^[a-z0-9][a-z0-9._-]{0,63}$`), defaulting to the last segment of `path` |
 | `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` |
 | `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`) |
 | `model` | 6. model choice | `class` (`frontier`, `balanced`, `fast`), `effort`, `overridable`, `candidates` (ordered list of `{provider, id, effort?}`; see below) |
