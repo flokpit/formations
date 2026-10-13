@@ -5,7 +5,8 @@
 #
 # Contents are the contract (docs/decisions/001-contract-delivery-to-flokpit.md,
 # decision 1): breeds/, formations/, specs/ and scripts/validate.py, at exactly
-# those paths. validate.py derives its root from its own location, so the
+# those paths, plus README.md and LICENSE so that every copy carries the license
+# notice the MIT license requires. validate.py derives its root from its own location, so the
 # extracted tree validates in place; scripts/ is listed file by file because
 # the rest of scripts/ is not part of the contract.
 #
@@ -18,7 +19,7 @@ archive=${1:?usage: build-archive.sh <path/to/archive.tar.gz>}
 tar --sort=name --owner=0 --group=0 --numeric-owner \
     --mode='u=rwX,go=rX' \
     --mtime="@$(git log -1 --format=%ct)" \
-    -cf - breeds formations specs scripts/validate.py | gzip -n -9 > "$archive"
+    -cf - README.md LICENSE breeds formations specs scripts/validate.py | gzip -n -9 > "$archive"
 
 # Checksum file with a bare file name, so `sha256sum -c` works next to it.
 dir=$(dirname "$archive")

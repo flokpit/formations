@@ -52,8 +52,9 @@ configured with `<short sha>.tar.gz` and fetch it from the storage zone with an
    once the last consumer reads releases. The job carries that note in
    `.github/workflows/validate.yml`.
 6. Both channels ship the **same archive**, built by one script,
-   `scripts/build-archive.sh`: `breeds/`, `formations/`, `specs/` and
-   `scripts/validate.py`, reproducible tar (`--sort=name`, fixed owner,
+   `scripts/build-archive.sh`: `breeds/`, `formations/`, `specs/`,
+   `scripts/validate.py` and, from v0.2 on, `README.md` and `LICENSE` (the MIT
+   license requires its notice in every copy), reproducible tar (`--sort=name`, fixed owner,
    `--mtime` of `HEAD`, `gzip -n -9`). Two builds of a commit have the same
    sha256. This is also where decision 1 of memo 001 (`specs/` and the
    validator belong in the archive) finally lands.

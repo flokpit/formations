@@ -78,7 +78,8 @@ formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
 Both publish paths ship the same archive, built by `scripts/build-archive.sh`:
-`breeds/`, `formations/`, `specs/` and `scripts/validate.py` in a reproducible
+`README.md`, `LICENSE`, `breeds/`, `formations/`, `specs/` and
+`scripts/validate.py` in a reproducible
 tar.gz (the validator keeps that exact path, so it runs in place after
 extraction), plus a `.sha256` next to it.
 
