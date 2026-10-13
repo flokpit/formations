@@ -24,16 +24,15 @@
 
 ## Next
 
-- `.github/workflows/validate.yml` still has to be committed by a human: the
-  agent token has no GitHub `workflow` scope, so the push of that file is
-  rejected. The exact, cleanly applying diff is
-  `docs/patches/002-release-workflow.patch` (`git apply` it on `main`): tags
-  `v*` trigger the workflow, a `release` job after the validation matrix runs
-  `gh release create` with `formations-<tag>.tar.gz` + `.sha256`, and the
-  bunny.net job uses `scripts/build-archive.sh` and is marked deprecated. That
-  diff is also what closes issue #1 (`specs/` and the validator in the
-  archive). Delete the patch file once it is in.
-- A human merges the release-channel PR and then pushes the tag `v0.1`; the
+- The `release` job is in `.github/workflows/validate.yml` (applied from the
+  former `docs/patches/002-release-workflow.patch`): tags `v*` run the
+  validation matrix, then `gh release create` attaches
+  `formations-<tag>.tar.gz` + `.sha256`; the bunny.net job uses
+  `scripts/build-archive.sh` and is marked deprecated. This closes issue #1
+  (`specs/` and the validator in the archive). The job rejects tags that
+  are not `vX.Y.Z` or `vX.Y.Z-rc.N` (decision 003); `-rc` releases are marked
+  prerelease.
+- A human merges the release-channel PR and then pushes the tag `v0.1.0`; the
   `release` job publishes the first archive that contains `specs/` and
   `scripts/validate.py`. Agents cannot do either: no merge rights, and
   `gh release` / tag pushes are outside the agent tool allowlist.

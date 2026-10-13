@@ -3,6 +3,8 @@ name: validate
 on:
   push:
     branches: [main]
+    # Human-cut version tags: they validate first, then publish a release.
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -38,8 +40,51 @@ jobs:
         env:
           FILE: ${{ matrix.file }}
 
+  release:
+    name: publish archive as a GitHub release
+    # Only for tags v*, and only after every validation job succeeded (needs fails closed).
+    needs: validate
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create
+    steps:
+      - name: Check tag format
+        # docs/decisions/003-release-delivery-review.md: vX.Y.Z or vX.Y.Z-rc.N
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
+            echo "::error::tag '$GITHUB_REF_NAME' is not vX.Y.Z or vX.Y.Z-rc.N"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Build archive
+        run: |
+          archive="formations-$GITHUB_REF_NAME.tar.gz"
+          # Same script as the bunny.net job: one definition of the archive.
+          scripts/build-archive.sh "$archive"
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+          echo "SHA256=$(cut -d' ' -f1 < "$archive.sha256")" >> "$GITHUB_ENV"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Breed and formation contract for flokpit: breeds/, formations/, specs/ and scripts/validate.py, in a reproducible tar.gz. Download it unauthenticated from the assets below, check it against the attached .sha256, extract it, and scripts/validate.py runs in place on the extracted tree. The pin is this tag - see docs/decisions/002-release-channel.md."
+          case "$GITHUB_REF_NAME" in *-rc.*) pre=--prerelease ;; *) pre= ;; esac
+          gh release create "$GITHUB_REF_NAME" $pre \
+            --title "$GITHUB_REF_NAME" \
+            --notes "$notes" \
+            "$ARCHIVE" "$ARCHIVE.sha256"
+          echo "release $GITHUB_REF_NAME -> $ARCHIVE (sha256 $SHA256)" >> "$GITHUB_STEP_SUMMARY"
+
   publish:
-    name: publish archive to bunny.net
+    name: publish archive to bunny.net (deprecated)
+    # DEPRECATED: GitHub Releases (job `release` above) are the public channel
+    # since docs/decisions/002-release-channel.md. This upload is kept live
+    # only until the last consumer has moved to a release tag; remove the job
+    # and the two repository secrets then.
     # Only for main, and only after every validation job succeeded (needs fails closed).
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -59,13 +104,11 @@ jobs:
         run: |
           short=$(git rev-parse --short HEAD)
           archive="$short.tar.gz"
-          # Reproducible: sorted entries, fixed owner, mtime of the commit, no gzip timestamp.
-          tar --sort=name --owner=0 --group=0 --numeric-owner \
-              --mtime="@$(git log -1 --format=%ct)" \
-              -cf - breeds formations | gzip -n -9 > "$archive"
-          tar -tzf "$archive"
+          # Same script as the release job: one definition of the archive
+          # (breeds, formations, specs, scripts/validate.py; reproducible).
+          scripts/build-archive.sh "$archive"
           echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
-          echo "SHA256=$(sha256sum "$archive" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "SHA256=$(cut -d' ' -f1 < "$archive.sha256")" >> "$GITHUB_ENV"
 
       - name: Upload archive
         run: |

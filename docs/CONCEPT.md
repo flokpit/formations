@@ -128,7 +128,7 @@ start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 Decided (`docs/decisions/001-contract-delivery-to-flokpit.md` decision 3,
 `docs/decisions/002-release-channel.md`): the delivery path is the **published
 artifact**, and the artifact is a **GitHub release** of `flokpit/formations`
-with a human-cut tag (`v0.1`, `v0.2`, ...). flokpit pins the tag in its
+with a human-cut tag (`v0.1.0`, `v0.2.0`, ...). flokpit pins the tag in its
 configuration and fetches
 
 ```
@@ -339,7 +339,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 
 | Id | Requirement |
 |---|---|
-| B-1 | flokpit MUST load breeds from a pinned release tag of `flokpit/formations` (5.1); it MUST NOT follow a branch, and MUST NOT resolve the deprecated bunny.net `LATEST` pointer, at runtime. |
+| B-1 | flokpit MUST load breeds from a pinned release of `flokpit/formations` (5.1), identified by its tag and verified against a configured sha256 of the release archive (the digest pins; the tag only names it); it MUST NOT resolve a branch, a moving tag, `releases/latest` or the deprecated bunny.net `LATEST` pointer at runtime. |
 | B-2 | Every breed file MUST validate against `specs/breed.schema.json`, and every resolved breed against `#/$defs/resolved`. An invalid breed MUST NOT be spawnable; flokpit MUST report it at startup (like `loadRoles` errors today) and keep serving the valid ones. |
 | B-3 | Resolution MUST use the merge rule of 4.1 exactly (maps merge, lists and scalars replace). |
 | B-4 | The rendered `Role` MUST pass the existing strict `Role` schema and the agentd `RoleSpec` parity test. |

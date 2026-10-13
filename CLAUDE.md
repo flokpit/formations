@@ -82,7 +82,7 @@ Both publish paths ship the same archive, built by `scripts/build-archive.sh`:
 tar.gz (the validator keeps that exact path, so it runs in place after
 extraction), plus a `.sha256` next to it.
 
-The public channel is **GitHub Releases** with human-cut tags (`v0.1`, `v0.2`,
+The public channel is **GitHub Releases** with human-cut tags (`v0.1.0`, `v0.2.0`,
 ...; see `docs/decisions/002-release-channel.md`). Pushing a tag `v*` runs the
 validation matrix and then the `release` job, which attaches
 `formations-<tag>.tar.gz` and its `.sha256` to a release. Consumers download
