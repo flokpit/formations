@@ -16,6 +16,7 @@ set -eu
 archive=${1:?usage: build-archive.sh <path/to/archive.tar.gz>}
 
 tar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mode='u=rwX,go=rX' \
     --mtime="@$(git log -1 --format=%ct)" \
     -cf - breeds formations specs scripts/validate.py | gzip -n -9 > "$archive"
 
