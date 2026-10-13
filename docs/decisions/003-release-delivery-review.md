@@ -56,11 +56,10 @@ says what has changed on `main` since:
 - **Update after reconciliation with 002:** `scripts/build-archive.sh` now
   packs all four entries for both channels; `docs/CONCEPT.md` 5.1, B-1 and
   phase-0 row 3 and `CLAUDE.md` describe the release model; 001 carries its
-  "superseded" pointer. Still owed to a human (agent tokens have no `workflow`
-  scope): applying `docs/patches/002-release-workflow.patch` (the `release`
-  job), pushing the tag `v0.1.0`, tag protection, the asset-host allowlist and
-  the repository-visibility check. That patch does not yet check the tag
-  against the regex below; add that step when applying it.
+  "superseded" pointer. The `release` job is now in `validate.yml`. Still owed to a human (agent
+  tokens have no `workflow` scope): pushing the tag `v0.1.0`, tag protection, the asset-host allowlist and
+  the repository-visibility check. The job does not yet check the tag against
+  the regex below.
 
 ## Stakeholders
 
@@ -278,7 +277,7 @@ scope.
 
 | # | What | Where |
 |---|---|---|
-| a | Apply `docs/patches/002-release-workflow.patch` (a `release` job in `validate.yml`: tag trigger `v*`, `contents: write`, after validation, `scripts/build-archive.sh`, release with both assets) and add the tag-format check. This replaces the separate `release.yml` specified above | `.github/workflows/validate.yml` |
+| a | **Applied** except the tag-format check (a `release` job in `validate.yml`: tag trigger `v*`, `contents: write`, after validation, `scripts/build-archive.sh`, release with both assets) ; add the check. This replaces the separate `release.yml` specified above | `.github/workflows/validate.yml` |
 | b | **Done** in `scripts/build-archive.sh`; the same patch makes the `publish` job call it | `scripts/build-archive.sh` |
 | c | Add the release-asset host to the agent egress allowlist; without it no agent pod can ever fetch an asset | `breeds/_base.yaml:39` (today `[github.com, api.github.com, codeload.github.com]`) |
 | d | **Done** (5.1 and phase-0 row 3 by 002; B-1 digest wording in this reconciliation) | `docs/CONCEPT.md` |
