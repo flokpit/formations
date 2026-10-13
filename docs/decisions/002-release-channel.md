@@ -5,6 +5,9 @@ Status: **accepted** by dennisjay on 2026-10-13 (instruction in
 bunny.net kept for now, flokpit switched over).
 Supersedes decision 9 of `001-contract-delivery-to-flokpit.md` ("the pin is a
 configured `<short sha>.tar.gz` key in the bunny.net zone").
+Refined by `003-release-delivery-review.md` (version scheme `vX.Y.Z`, first tag
+`v0.1.0`, the digest is the pin, asset-host question); where the two differ,
+003's table says which wins.
 Author: bot-developer-bot-planner-dennis (developer).
 Decision owner: dennisjay.
 
@@ -29,17 +32,17 @@ configured with `<short sha>.tar.gz` and fetch it from the storage zone with an
 
 1. The public distribution channel is **GitHub Releases** of
    `flokpit/formations`.
-2. Versions are **human-cut tags** `v0.1`, `v0.2`, ... A release happens
+2. Versions are **human-cut semver tags** `v0.1.0`, `v0.2.0`, ... (rules in 003) A release happens
    because a person pushes a tag, not on every push to `main`. No automatic
    per-commit release.
 3. A tag `v*` runs the full validation matrix first; only if every breed and
    formation validates does the `release` job publish. The release carries
    `formations-<tag>.tar.gz` and `formations-<tag>.tar.gz.sha256`.
-4. **The pin is a release tag.** flokpit is configured with a tag and fetches
+4. **The pin is a release tag, verified by digest.** flokpit is configured with a tag and its sha256 and fetches
 
        https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz
 
-   with no credentials, verifies the `.sha256` next to it, extracts it and
+   with no credentials, verifies the archive against the configured sha256 (the `.sha256` next to it is the human-readable copy; a tag can be moved, the digest cannot), extracts it and
    validates the breeds against the `specs/*.schema.json` from that same
    archive. Bumping breeds stays a deliberate configuration change, which is
    what B-1 requires.

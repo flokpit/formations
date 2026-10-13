@@ -33,7 +33,7 @@
   bunny.net job uses `scripts/build-archive.sh` and is marked deprecated. That
   diff is also what closes issue #1 (`specs/` and the validator in the
   archive). Delete the patch file once it is in.
-- A human merges the release-channel PR and then pushes the tag `v0.1`; the
+- A human merges the release-channel PR and then pushes the tag `v0.1.0`; the
   `release` job publishes the first archive that contains `specs/` and
   `scripts/validate.py`. Agents cannot do either: no merge rights, and
   `gh release` / tag pushes are outside the agent tool allowlist.

@@ -1,22 +1,33 @@
-# 002 - Delivering the contract as GitHub releases of a public repository
+# 003 - Release delivery: review, version scheme and digest pin
 
 Status: **accepted** by dennisjay on 2026-10-13 (decision
 `01M4TZB2E18DZ0KPEB0H2211GD`, relayed in #flockpit-dev as
-`01M4TZD76SRZTDAA5BDH11D7HS`): option A - uploaded asset
-`formations-<tag>.tar.gz` plus `SHA256SUMS`, flat archive (`breeds/`,
-`formations/`, `specs/`, `scripts/validate.py`), annotated `vX.Y.Z` with `rc`
-as prerelease, **first tag `v0.1.0`**, tag protection on, and B-1 amended so
-that the digest pins and the tag only names it.
+`01M4TZD76SRZTDAA5BDH11D7HS`): option A, annotated `vX.Y.Z` tags with `rc` as
+prerelease, **first tag `v0.1.0`**, tag protection on, and B-1 amended so that
+the digest pins and the tag only names it.
 
-Still open after this acceptance, both listed under "Open risks and unknowns":
-the asset-host rule (the host itself is being measured, not guessed) and the
-budget cap for the developer breed.
+This memo was written in parallel with, and reconciled against,
+`002-release-channel.md`. **002 is the decision of record for the channel**
+(GitHub Releases, human-cut tags, `scripts/build-archive.sh`, bunny.net kept
+deprecated). This memo adds to it and overrides it only where the table below
+says so.
+
+| Point | 002 as first written | This memo | Resolution |
+|---|---|---|---|
+| Tag form | `v0.1`, `v0.2` | semver `vX.Y.Z`, first tag `v0.1.0` | **003**; 002, `CLAUDE.md`, `docs/CONCEPT.md` and `PROGRESS.md` updated |
+| Checksum asset | `formations-<tag>.tar.gz.sha256` | `SHA256SUMS` | **002** (already built by `scripts/build-archive.sh`; `sha256sum -c` works next to it) |
+| What the pin is | the tag | the digest; the tag only names it | **003**; B-1 in `docs/CONCEPT.md` amended |
+| bunny.net | live, deprecated | delete the `publish` job | **002**: kept until the last consumer reads releases |
+| Asset host | not covered | redirect host must be measured and allowlisted | **003**, still open (see below) |
+| Archive layout | four entries, flat | the same | agree |
+
+Still open: the asset-host rule (the host itself is being measured, not
+guessed) and the budget cap for the developer breed.
 Supersedes the delivery half of
-`docs/decisions/001-contract-delivery-to-flokpit.md` (its option B and its
-decision 9: bunny.net storage zone, `<short sha>.tar.gz`, mutable `LATEST`
-pointer). Everything else in 001 - decisions 1-8 and 10-13, including
-decision 13 (`breeds/developer.yaml:82`, `max_turns` 60 -> 512) - stays in
-force and is not touched by this memo.
+`docs/decisions/001-contract-delivery-to-flokpit.md` together with 002
+(its option B and its decision 9). Everything else in 001 - decisions 1-8 and
+10-13, including decision 13 (`breeds/developer.yaml:82`, `max_turns` 60 ->
+512) - stays in force and is not touched by this memo.
 
 Author: bot-consultant-bot-planner-denni (consultant), requested in
 #flockpit-dev by bot-planner-dennisjay-2 (task T1) after dennisjay decided on
@@ -35,17 +46,21 @@ PR #204) is being written against whatever this repository publishes, so the
 pin, the artifact name, its layout, its contents and the "a newer version
 exists" source must be nailed down before that code is rewritten.
 
-Three facts about today's state, so nobody plans against a fiction:
+State when this memo was written, kept for the record; the update below
+says what has changed on `main` since:
 
-- The `publish` job still packs only `breeds` and `formations`
-  (`.github/workflows/validate.yml:63-66`). The change decided in 001
-  (decision 1: add `specs` and `scripts/validate.py`) was never committed -
-  the agent token has no `workflow` scope (`PROGRESS.md`, section "Next").
-- `CLAUDE.md:80-88` already *describes* the four-entry archive, so the
-  repository documentation and its CI currently disagree.
-- Therefore **no published artifact that satisfies X-2/X-3 exists anywhere
-  today**, and nothing in flokpit consumes bunny.net in production. Switching
-  delivery now costs no migration.
+- The `publish` job packed only `breeds` and `formations`, while `CLAUDE.md`
+  already described the four-entry archive. No published artifact satisfied
+  X-2/X-3, and nothing in flokpit consumed bunny.net in production, so
+  switching delivery costs no migration.
+- **Update after reconciliation with 002:** `scripts/build-archive.sh` now
+  packs all four entries for both channels; `docs/CONCEPT.md` 5.1, B-1 and
+  phase-0 row 3 and `CLAUDE.md` describe the release model; 001 carries its
+  "superseded" pointer. Still owed to a human (agent tokens have no `workflow`
+  scope): applying `docs/patches/002-release-workflow.patch` (the `release`
+  job), pushing the tag `v0.1.0`, tag protection, the asset-host allowlist and
+  the repository-visibility check. That patch does not yet check the tag
+  against the regex below; add that step when applying it.
 
 ## Stakeholders
 
@@ -113,18 +128,18 @@ memo and on a release that exists.
 
 ## Options
 
-### A - Uploaded release asset `formations-<tag>.tar.gz` plus `SHA256SUMS`
+### A - Uploaded release asset `formations-<tag>.tar.gz` plus `.sha256`
 
 A tag push `v*` triggers a release workflow: validate, build the archive with
 the same reproducible recipe the `publish` job already uses
 (`--sort=name --owner=0 --group=0 --numeric-owner --mtime=@<commit time>`,
-`gzip -n -9`), write `SHA256SUMS`, create the release with both files attached.
+`gzip -n -9`), write `formations-<tag>.tar.gz.sha256`, create the release with both files attached.
 flokpit pins `FORMATIONS_VERSION=vX.Y.Z` plus `FORMATIONS_SHA256=<digest>`.
 
 - Trade-offs: the bytes come from our own recipe and never change; the archive
   contains exactly the contract (four entries, no `docs/`, no `.github/`); the
   layout is identical to what 001 decided, so the T2 extract/validate code and
-  `CLAUDE.md:80-88` stay true; `SHA256SUMS` is a human convenience while the
+  `CLAUDE.md:80-88` stay true; the `.sha256` file is a human convenience while the
   configured digest stays authoritative.
 - Risks: the download redirects to a `*.githubusercontent.com` asset host -
   the T2 allowlist and `breeds/_base.yaml:39` must be widened, or the loader
@@ -199,7 +214,8 @@ Pin and naming:
   verdicts. Pre-releases `vX.Y.Z-rc.N` are allowed, marked prerelease, and so
   stay out of `releases/latest`.
 - Assets: `formations-<tag>.tar.gz` (for example `formations-v0.1.0.tar.gz`)
-  and `SHA256SUMS` with the one `sha256sum` line for that file.
+  and `formations-<tag>.tar.gz.sha256` with the one `sha256sum` line for that
+  file (both produced by `scripts/build-archive.sh`).
 - Download URL:
   `https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz`
 - Archive layout: **no top-level prefix directory**. The four top-level
@@ -217,18 +233,16 @@ human must commit it, agent tokens have no `workflow` scope:
 - trigger `push: tags: ['v*']`; `permissions: contents: write`.
 - steps: checkout, `astral-sh/setup-uv@v6`, `uv run scripts/validate.py` over
   all files (a tag that does not validate must not become a release), build
-  the archive with the recipe above, write `SHA256SUMS`, list the archive with
+  the archive with the recipe above, write the `.sha256` file, list the archive with
   `tar -tzf` into the job summary, then create the release with both assets
   and the digest in the release notes.
 - the job must fail if the tag does not match
   `^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$`.
 
-Retire the old path in the same PR: delete the `publish` job
-(`.github/workflows/validate.yml:40-95`), rewrite `CLAUDE.md:80-88` to
-describe the release, and have dennisjay delete the repository secrets
-`FORMATIONS_BUNNY_BUCKET_NAME` and `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`.
-Nothing consumes the zone (see "Problem"), so there is no transition period to
-plan.
+Retiring the old path: 002 keeps the `publish` job live but deprecated; when
+the last consumer reads releases, delete it and have dennisjay delete the
+repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
+`FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`.
 
 Second upstream item, added after the planner's review
 (`01M4TZ6XK6NPDG1DDCQS60Q300`): `breeds/_base.yaml:39` currently allows
@@ -258,17 +272,18 @@ must be rewritten to the release model.
 ### Upstream to-do list for dennisjay
 
 Everything this decision needs in `flokpit/formations`, in the order that keeps
-`main` green. None of it can be done by an agent: (a)-(c) and (f) touch CI,
-breeds or secrets, and agent tokens have no `workflow` scope.
+`main` green. Open items (a), (c), (f), (g) cannot be done by an agent: they touch
+CI, breeds, secrets or repository settings, and agent tokens have no `workflow`
+scope.
 
 | # | What | Where |
 |---|---|---|
-| a | Commit `.github/workflows/release.yml` as specified above (tag trigger `v*`, `contents: write`, validate, reproducible tar, `SHA256SUMS`, create release with both assets) | new file `.github/workflows/release.yml` |
-| b | Fix the tar entry list so all four entries are packed: `-cf - breeds formations specs scripts/validate.py` - owed since 001 decision 1; CI and documentation disagree today | `.github/workflows/validate.yml:63-66` vs `CLAUDE.md:80-88` |
+| a | Apply `docs/patches/002-release-workflow.patch` (a `release` job in `validate.yml`: tag trigger `v*`, `contents: write`, after validation, `scripts/build-archive.sh`, release with both assets) and add the tag-format check. This replaces the separate `release.yml` specified above | `.github/workflows/validate.yml` |
+| b | **Done** in `scripts/build-archive.sh`; the same patch makes the `publish` job call it | `scripts/build-archive.sh` |
 | c | Add the release-asset host to the agent egress allowlist; without it no agent pod can ever fetch an asset | `breeds/_base.yaml:39` (today `[github.com, api.github.com, codeload.github.com]`) |
-| d | **Approved, pending execution.** The B-1 amendment: the digest pins, the tag only names it (wording under "Answers", item 5) | `docs/CONCEPT.md:330`, plus `:128-136` (5.1 still recommends a submodule) and `:424` (phase-0 row 3 still says `LATEST`) |
-| e | One line "superseded by 002 for the delivery path" in the older memo - I may not edit another memo | `docs/decisions/001-contract-delivery-to-flokpit.md` (status header) |
-| f | Delete the `publish` job and the two repository secrets `FORMATIONS_BUNNY_BUCKET_NAME`, `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; rewrite the archive paragraph | `.github/workflows/validate.yml:40-95`, `CLAUDE.md:80-88` |
+| d | **Done** (5.1 and phase-0 row 3 by 002; B-1 digest wording in this reconciliation) | `docs/CONCEPT.md` |
+| e | **Done** (decision 9 carries the pointer to 002) | `docs/decisions/001-contract-delivery-to-flokpit.md` |
+| f | **Deferred by 002**: the `publish` job and the two secrets stay, marked deprecated, until the last consumer reads releases. Then delete both | `.github/workflows/validate.yml`, repository secrets |
 | g | **Approved, pending execution.** Push the first tag `v0.1.0` and post tag, sha256 and asset URL in #flockpit-dev; tag protection on | GitHub, repository settings |
 
 The asset host in (c) is **measured, not guessed**: bot-developer-bot-planner-denn-4
