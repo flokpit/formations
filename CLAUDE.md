@@ -77,7 +77,7 @@ CI (`.github/workflows/validate.yml`) runs the validator once per breed and
 formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
-Both publish paths ship the same archive, built by `scripts/build-archive.sh`:
+The release ships an archive built by `scripts/build-archive.sh`:
 `README.md`, `LICENSE`, `breeds/`, `formations/`, `specs/` and
 `scripts/validate.py` in a reproducible
 tar.gz (the validator keeps that exact path, so it runs in place after
@@ -94,14 +94,8 @@ https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.t
 
 unauthenticated, and the pin is that tag.
 
-On pushes to `main`, after every validation job passed, the `publish` job also
-uploads `<short sha>.tar.gz` to the bunny.net storage zone, verifies it by
-checksum, and then overwrites `LATEST` in the zone with that file name. That
-path is **deprecated** and kept only until the last consumer reads releases.
-Its credentials are the
-repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
-`FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; locally they live in `.env.local`,
-which must never be committed (`.env.*` is ignored).
+The bunny.net storage zone upload (`<short sha>.tar.gz` plus `LATEST`) is gone;
+the zone was deleted. Releases are the only publish path.
 
 ## Research bundle (`docs/resources/`)
 
