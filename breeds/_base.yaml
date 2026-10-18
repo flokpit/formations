@@ -65,6 +65,8 @@ tools:
     "git show*": allow
     "rg *": allow
     "jq *": allow
+    "gh issue list*": allow     # every breed may read the issue tracker
+    "gh issue view*": allow
     "sudo *": deny
     "curl *": deny
     "wget *": deny
@@ -87,4 +89,4 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:read"]
+  github: ["contents:read", "issues:read"]

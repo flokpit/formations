@@ -81,7 +81,7 @@ lifecycle:
   hello: "Hi! My name is {nick}. I test UIs in a headless browser. What should I test?"
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write"]
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
 
 handoff:
   done: A test report (passed and failed flows, accessibility findings, screenshots) and a PR with new e2e tests, posted with intent DONE.
