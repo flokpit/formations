@@ -62,7 +62,7 @@ jobs:
       - name: Build archive
         run: |
           archive="formations-$GITHUB_REF_NAME.tar.gz"
-          # Same script as the bunny.net job: one definition of the archive.
+          # One definition of the archive, shared with local builds.
           scripts/build-archive.sh "$archive"
           echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
           echo "SHA256=$(cut -d' ' -f1 < "$archive.sha256")" >> "$GITHUB_ENV"
@@ -78,61 +78,3 @@ jobs:
             --notes "$notes" \
             "$ARCHIVE" "$ARCHIVE.sha256"
           echo "release $GITHUB_REF_NAME -> $ARCHIVE (sha256 $SHA256)" >> "$GITHUB_STEP_SUMMARY"
-
-  publish:
-    name: publish archive to bunny.net (deprecated)
-    # DEPRECATED: GitHub Releases (job `release` above) are the public channel
-    # since docs/decisions/002-release-channel.md. This upload is kept live
-    # only until the last consumer has moved to a release tag; remove the job
-    # and the two repository secrets then.
-    # Only for main, and only after every validation job succeeded (needs fails closed).
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    # Uploads run one at a time in push order, so LATEST is never overwritten by an older commit.
-    concurrency:
-      group: publish-main
-      cancel-in-progress: false
-    env:
-      BUNNY_STORAGE_HOST: storage.bunnycdn.com   # region of the storage zone (Falkenstein)
-      BUNNY_ZONE: ${{ secrets.FORMATIONS_BUNNY_BUCKET_NAME }}
-      BUNNY_KEY: ${{ secrets.FORMATIONS_BUNNY_BUCKET_WRITE_SECRET }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build archive
-        run: |
-          short=$(git rev-parse --short HEAD)
-          archive="$short.tar.gz"
-          # Same script as the release job: one definition of the archive
-          # (README.md, LICENSE, breeds, formations, specs, scripts/validate.py; reproducible).
-          scripts/build-archive.sh "$archive"
-          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
-          echo "SHA256=$(cut -d' ' -f1 < "$archive.sha256")" >> "$GITHUB_ENV"
-
-      - name: Upload archive
-        run: |
-          curl --fail-with-body -sS -X PUT \
-            -H "AccessKey: $BUNNY_KEY" \
-            -H "Content-Type: application/octet-stream" \
-            -H "Checksum: ${SHA256^^}" \
-            --data-binary "@$ARCHIVE" \
-            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/$ARCHIVE"
-
-      - name: Verify archive
-        run: |
-          curl --fail -sS -H "AccessKey: $BUNNY_KEY" -o downloaded.tar.gz \
-            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/$ARCHIVE"
-          echo "$SHA256  downloaded.tar.gz" | sha256sum -c -
-
-      - name: Update LATEST
-        # Only after the archive is uploaded and verified, so LATEST never points to a missing file.
-        run: |
-          printf '%s' "$ARCHIVE" > LATEST
-          curl --fail-with-body -sS -X PUT \
-            -H "AccessKey: $BUNNY_KEY" \
-            -H "Content-Type: text/plain" \
-            --data-binary @LATEST \
-            "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/LATEST"
-          test "$(curl --fail -sS -H "AccessKey: $BUNNY_KEY" "https://$BUNNY_STORAGE_HOST/$BUNNY_ZONE/LATEST")" = "$ARCHIVE"
-          echo "LATEST -> $ARCHIVE (sha256 $SHA256)" >> "$GITHUB_STEP_SUMMARY"

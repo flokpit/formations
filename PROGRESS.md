@@ -27,8 +27,7 @@
 - The `release` job is in `.github/workflows/validate.yml` (applied from the
   former `docs/patches/002-release-workflow.patch`): tags `v*` run the
   validation matrix, then `gh release create` attaches
-  `formations-<tag>.tar.gz` + `.sha256`; the bunny.net job uses
-  `scripts/build-archive.sh` and is marked deprecated. This closes issue #1
+  `formations-<tag>.tar.gz` + `.sha256`. This closes issue #1
   (`specs/` and the validator in the archive). The job rejects tags that
   are not `vX.Y.Z` or `vX.Y.Z-rc.N` (decision 003); `-rc` releases are marked
   prerelease.
@@ -38,8 +37,9 @@
   `gh release` / tag pushes are outside the agent tool allowlist.
 - Only after that release exists may flokpit bump its pin to the tag and
   delete its old `software-architect` / `ui-tester` role files.
-- Remove the deprecated bunny.net `publish` job and its two repository secrets
-  once no consumer reads the storage zone any more.
+- The bunny.net `publish` job is removed and the storage zone is deleted; still
+  to do by hand: delete the repository secrets `FORMATIONS_BUNNY_BUCKET_NAME`
+  and `FORMATIONS_BUNNY_BUCKET_WRITE_SECRET` and the local `.env.local`.
 - `LICENSE` (MIT, Dennis Jöst) and `README.md` are in the repository and, from
   the next release on, in the archive. `v0.1.0` predates them; cut `v0.1.1` or
   `v0.2.0` so a published archive carries the license notice.
