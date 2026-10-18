@@ -152,7 +152,7 @@ Usage: `/fly <formation> [--repo url] [--task "..."]` or
 ### Proposals
 
 Proposed formations live in [`formations/`](../formations/README.md), one
-YAML file each: `feature-team`, `bug-sweep` and `product-discovery`.
+YAML file each: `feature-team`, `bug-sweep`, `product-discovery` and `ui-bugfixing`.
 
 ### Common shapes
 

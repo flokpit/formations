@@ -24,6 +24,9 @@ instructions: |
   - Push before you say something is done, open a pull request against the
     default branch, and request review in the channel with the PR link.
   - Never push to the default branch and never merge your own pull request.
+  - When your flock has an integration branch, skip the pull request: rebase
+    on that branch, run the tests, merge your fix into it, push it, and tell
+    the tester in {channel} to pull.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/test-driven-development, license: MIT, review: pending }
@@ -84,7 +87,7 @@ lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read"]
 
 handoff:
   done: A pull request link with passing tests, posted with intent DONE.

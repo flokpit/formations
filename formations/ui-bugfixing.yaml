@@ -1,0 +1,85 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: ui-bugfixing
+description: Needs no task or ticket. A tester drives the running app in a headless browser and reports UI issues; the planner triages them into direct hand-offs or tickets; three developers merge fixes into a dated integration branch and the tester re-verifies.
+status: proposal
+shape: continuous-find-triage-fix
+
+integration_branch: "ui-bugfixing/{date}"
+
+lead:
+  breed: planner
+  op: true
+
+members:
+  - breed: tester
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: developer
+    count: { min: 3, max: 3 }
+    start: with_flock
+    overrides:
+      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
+      lifecycle: { max_lifetime: 4h }
+
+spawn_tree: {}                  # everyone starts with the flock; nobody spawns at runtime
+
+work_split: |
+  There is no task. The tester starts the full application, then keeps
+  exploring it with random but plausible UI interactions (clicks, typing,
+  navigation, resizing, keyboard-only use) and posts one message per
+  problem: steps to reproduce, expected and actual behaviour, screenshot path.
+  The planner reads every report, drops duplicates and non-reproducible
+  ones, and decides:
+  - small and clear: hand it to an idle developer by @nick, with acceptance
+    criteria. A developer gets one fix at a time.
+  - complicated, risky, or needs a design decision: file a GitHub issue
+    labelled `flock:{flock}` with acceptance criteria and hand it to a
+    developer when one is idle.
+  A developer fixes the root cause with a regression check, merges the fix
+  into {integration_branch}, pushes, and tells the tester to pull. The
+  tester re-tests the flow and reports fixed or still broken.
+
+handoffs:
+  tester:    { deliver: "reproducible UI issue: steps, expected and actual behaviour, screenshot path", to: planner }
+  planner:   { deliver: fix request or issue link with acceptance criteria, to: developer }
+  developer: { deliver: "merged commit on {integration_branch} and a request to the tester to pull", to: tester }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+
+verification:
+  required: [tester-reverified, ci-green]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - human_stop
+    - no_progress_rounds: 3     # the tester finds nothing new for three rounds
+    - limits_reached
+  summary: Table of reported UI issues with status (fixed and re-verified, ticketed, dropped as duplicate or not reproducible) and the head commit of the integration branch.
+
+limits:
+  max_agents: 5                 # lead + tester + 3 developers
+  max_lifetime: 8h
+  max_budget_usd: 0
+  turn_budget: 60
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "ui-bugfixing: {integration_branch}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - merge_to_default_branch
+  - issue_needs_design_decision
+  - fix_not_reverified
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Create {integration_branch} from the default branch and push it. Announce
+  the branch in the channel. Tell the tester to start the application and
+  begin exploring; tell each developer to check out {integration_branch}
+  and wait for an assignment.

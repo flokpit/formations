@@ -14,6 +14,7 @@ formation text are what make the flock behave.
 |---|---|---|---|---|
 | [feature-team](feature-team.yaml) | architect | developers (1-4), reviewer, tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
 | [bug-sweep](bug-sweep.yaml) | planner | developers (1-5), reviewer | fan-out, independent verifier | many small, independent issues |
+| [ui-bugfixing](ui-bugfixing.yaml) | planner | tester, developers (3) | continuous find, triage, fix on an integration branch | keep a UI healthy without tickets: the tester explores, the planner triages, developers merge fixes |
 | [product-discovery](product-discovery.yaml) | project-manager | architect, tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
 
 ## Schema (`formations/v1alpha1`)
@@ -24,6 +25,7 @@ Validate with `uv run scripts/validate.py`.
 | Section | Formation feature | Fields |
 |---|---|---|
 | `name`, `description`, `status`, `shape` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
+| `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly |
 | `lead` | 1. lead | `breed`, `op` (lead gets `+o` in the flock channel), `overrides` |
 | `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand, overrides}` |
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |
@@ -38,7 +40,7 @@ Validate with `uv run scripts/validate.py`.
 | `kickoff` | start | what the lead posts and does first |
 
 Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
-`{repo}`, `{spawner}`.
+`{repo}`, `{spawner}`, `{date}` (ISO date `YYYY-MM-DD` of flock start), `{integration_branch}`.
 
 ## Rules
 
@@ -49,5 +51,8 @@ Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
   verifies work it produced.
 - **Limits stack.** Each agent keeps its breed limits; the flock limits apply
   on top. `max_agents` counts the lead.
+- **Integration branch.** With `integration_branch`, members with
+  `contents:write-integration-branch` merge there directly; the default branch
+  stays human-only.
 - **Humans stay in charge.** Ops in the channel can stop the flock at any
   time; merges to the default branch always need a human.

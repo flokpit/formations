@@ -13,6 +13,7 @@
     "description": { "type": "string", "minLength": 1 },
     "status": { "enum": ["proposal", "active", "deprecated"] },
     "shape": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "integration_branch": { "type": "string", "minLength": 1 },
     "lead": {
       "type": "object",
       "additionalProperties": false,
