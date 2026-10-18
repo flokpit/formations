@@ -82,7 +82,7 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:read", "pull_requests:write"]
+  github: ["contents:read", "pull_requests:write", "issues:read"]
 
 handoff:
   done: A submitted PR review (approve or request changes) linked in the channel with intent DONE.

@@ -62,7 +62,6 @@ tools:
     "gh pr create*": allow
     "gh pr comment*": allow
     "gh issue create*": allow
-    "gh issue view*": allow
     "tree *": allow
     "find *": allow
 
