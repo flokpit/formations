@@ -40,7 +40,7 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `lifecycle` | 8. lifecycle | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` |
 | `tools` | 9. tool permissions | category → pattern → `allow` or `deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents`; `deny` wins over `allow`, and anything not allowed is denied (agents run without prompts); `{branch}` in a pattern is the agent's branch |
 | `privileges` | 10. spawn and chat | `may_spawn` (breed names), `chat.mode` (`voice` = `+v`), `chat.op` |
-| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway; what the breed must deliver when done |
+| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`contents:write-integration-branch` allows pushing to a formation's `integration_branch`, never the default branch); what the breed must deliver when done |
 
 `tighten_only: true` means a spawned agent's limits and tools can only be
 narrowed by `/spawn` arguments or a formation, never widened (flokpit already

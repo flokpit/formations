@@ -77,7 +77,7 @@ All paths below are in `flokpit/formations` unless prefixed with `flokpit:`.
 | Breed files | `breeds/*.yaml` | the content flokpit loads; `_base.yaml` holds shared defaults |
 | Breed documentation | `breeds/README.md` | field meaning, merge rule, model selection |
 | Breed schema | `specs/breed.schema.json` (JSON Schema 2020-12, `$id` `https://github.com/flokpit/formations/specs/breed.schema.json`) | contract; `$defs/resolved` describes a merged, complete breed |
-| Formation files | `formations/*.yaml` | three proposals: `feature-team`, `bug-sweep`, `product-discovery` |
+| Formation files | `formations/*.yaml` | four proposals: `feature-team`, `bug-sweep`, `product-discovery`, `ui-bugfixing` |
 | Formation documentation | `formations/README.md` | field meaning, tighten-only rules |
 | Formation schema | `specs/formation.schema.json` | contract; references breed `$defs` |
 | Reference validator | `scripts/validate.py` (`uv run scripts/validate.py [FILE...]`) | schema checks plus cross-file rules; the behaviour flokpit's loader must match |
@@ -106,7 +106,7 @@ keep a diverging copy of them (see X-2).
 | `tools` | category → pattern → `allow`/`deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents` | `tools.allow`, `tools.deny` (Claude rule strings) |
 | `privileges` | `may_spawn`, `chat.mode`, `chat.op` | `may_spawn` |
 | `workspace` | `clone`, `branch_prefix` | `workspace.clone`, `workspace.branch_prefix` |
-| `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch` | – (gateway decides today) |
+| `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch`; `contents:write-integration-branch` lets a developer push to the flock's `integration_branch`, never the default branch | – (gateway decides today) |
 | `handoff` | `done`, `next` | – |
 
 Merge rule: maps merge recursively, lists and scalars replace. A breed's
@@ -413,6 +413,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | SC-12 | `/fly feature-team --task "..."` creates the channel, the lead with `+o` and the reviewer; the lead receives the kickoff | e2e with `echo`-runtime fixtures, then one real run |
 | SC-13 | A developer in a `bug-sweep` flock cannot spawn anyone; the planner cannot spawn a sixth developer | workflow tests |
 | SC-14 | `max_lifetime` expiry and `/land` both end the flock: summary posted, all members gone | workflow tests |
+| SC-15a | A developer in a `ui-bugfixing` flock can push to `ui-bugfixing/{date}` but not to the default branch | tool rendering test and one real attempt |
 | SC-15 | No flock member can merge to the default branch | tool rendering test and one real attempt |
 | SC-16 | Docs updated (X-6) | review |
 

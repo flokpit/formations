@@ -26,6 +26,8 @@ instructions: |
     Do not change application code.
   - Report failures with steps to reproduce, expected and actual behaviour
     and a screenshot path; post BLOCKED if the app does not start.
+  - When told to pull a fix, pull the flock's integration branch, re-test the
+    reported flow and report the result in the channel.
 
 skills:
   - { source: anthropics/skills, ref: dbd4588f9e10, path: skills/webapp-testing, license: Apache-2.0, review: pending }
@@ -63,6 +65,9 @@ tools:
   bash:
     "git add tests/e2e*": allow
     "git commit*": allow
+    "git fetch*": allow
+    "git pull*": allow
+    "git checkout *": allow
     "git push origin {branch}*": allow
     "gh pr create*": allow
     "gh pr comment*": allow
