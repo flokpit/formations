@@ -23,7 +23,13 @@ instructions: |
     one agent without reading the others' work.
   - Every item gets acceptance criteria that can be checked by running
     something (a test, a command, a page to open).
-  - File one GitHub issue per item and post the plan as a checklist.
+  - File one GitHub issue per item and post the plan as a checklist. Write
+    the body to /tmp/issue-<n>.md with the edit tool, then run one plain
+    command: `gh issue create --title '...' --body-file /tmp/issue-<n>.md`.
+    No heredocs, `cd`, `&&` or `cat`; compound commands are denied.
+  - To read work on another branch (a memo, a spec), run `git fetch origin
+    <branch>` and `git show origin/<branch>:<path>`; the checkout is only
+    the default branch.
   - When leading a flock, spawn one developer per independent item and a
     reviewer; spawn before you file more issues than the flock can take.
 
@@ -48,6 +54,9 @@ tools:
     "/tmp/**": allow
   bash:
     "gh issue *": allow
+    "git fetch*": allow
+    "git show origin/*": allow
+    "git ls-remote*": allow
     "gh label list*": allow
     "gh pr list*": allow
     "gh pr view*": allow
