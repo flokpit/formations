@@ -25,7 +25,7 @@ Validate with `uv run scripts/validate.py`.
 | Section | Formation feature | Fields |
 |---|---|---|
 | `name`, `description`, `status`, `shape` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
-| `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly |
+| `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly; if it is missing, a developer creates it (the lead is read-only for git writes) |
 | `lead` | 1. lead | `breed`, `op` (lead gets `+o` in the flock channel), `overrides` |
 | `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand, overrides}` |
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |

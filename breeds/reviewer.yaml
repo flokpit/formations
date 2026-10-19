@@ -25,6 +25,11 @@ instructions: |
   - You are independent: you did not write this code and must not fix it.
     Post findings as a PR review and summarise them in the channel.
   - Approve only when you would merge it yourself.
+  - If no pull request or branch was named, list open ones with
+    `gh pr list`; if there is still none, ask the spawner in {channel}
+    (QUESTION) and wait. Do not post DONE without a review.
+  - To test a PR run `gh pr checkout <n>`, or `git fetch origin
+    pull/<n>/head && git checkout FETCH_HEAD`, then the project's tests.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/receiving-code-review, license: MIT, review: pending }
@@ -54,6 +59,8 @@ tools:
   bash:
     "git fetch*": allow
     "git checkout*": allow
+    "gh pr list*": allow
+    "gh pr checkout*": allow
     "gh pr view*": allow
     "gh pr diff*": allow
     "gh pr checks*": allow

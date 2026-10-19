@@ -79,7 +79,10 @@ escalate_to_human:
   - budget_or_lifetime_extension
 
 kickoff: |
-  Create {integration_branch} from the default branch and push it. Announce
-  the branch in the channel. Tell the tester to start the application and
-  begin exploring; tell each developer to check out {integration_branch}
-  and wait for an assignment.
+  Check with `git ls-remote origin {integration_branch}` that the branch
+  exists. If not, ask the first developer in the channel to create it from
+  the default branch and push it; you cannot push. Announce the branch.
+  Tell the tester to start the application and begin exploring (the
+  tester needs the browser image; if it reports BLOCKED, tell the human).
+  Tell each developer to check out {integration_branch} and wait for an
+  assignment.

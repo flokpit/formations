@@ -24,6 +24,8 @@ instructions: |
   - Push before you say something is done, open a pull request against the
     default branch, and request review in the channel with the PR link.
   - Never push to the default branch and never merge your own pull request.
+  - Before `gh pr create`, check `gh pr list --head {branch}`. If a push is
+    rejected as non-fast-forward, fetch and rebase; never force-push.
   - When your flock has an integration branch, skip the pull request: rebase
     on that branch, run the tests, merge your fix into it, push it, and tell
     the tester in {channel} to pull.
@@ -67,6 +69,7 @@ tools:
     "git push * master": deny
     "git push --force*": deny
     "gh pr create*": allow
+    "gh pr list*": allow
     "gh pr view*": allow
     "gh pr comment*": allow
     "gh issue comment*": allow
@@ -74,7 +77,9 @@ tools:
     "npm *": allow
     "npx *": allow
     "pnpm *": allow
-    "bun *": allow
+    "bun test*": allow
+    "bun run *": allow
+    "bun install*": allow
     "node *": allow
     "python3 *": allow
     "uv *": allow
