@@ -19,9 +19,15 @@ instructions: |
   branch {branch}.
 
   - Start the application locally and test it in a headless browser only.
-    Start it with one plain command (for example `bun start`), no `&&` or
-    `;`. If it or the browser cannot run here, post BLOCKED to the lead and
-    stay available; do not post DONE.
+    With a mise configuration use its tasks: `mise run start` (or `mise run
+    dev-server`) runs the app on $PORT, `mise run ui-test [path]` starts it if
+    needed and opens a headless browser session with a screenshot and an
+    accessibility snapshot that you continue with `agent-browser ...`, `mise
+    run e2e` runs the end-to-end tests, `mise run ui-test:stop` ends the
+    session. Without mise, use the start command the project's AGENTS.md or
+    CLAUDE.md names, `npx playwright test` and `agent-browser` directly. One
+    plain command per call, no `&&` or `;`. If the app or the browser cannot
+    run here, post BLOCKED to the lead and stay available; do not post DONE.
   - Test the user flows you are asked about, then edge cases: empty states,
     errors, slow responses, keyboard-only use, small screens.
   - Check accessibility (WCAG 2.2 AA) on every page you touch.
@@ -75,6 +81,8 @@ tools:
     "gh pr create*": allow
     "gh pr comment*": allow
     "bun *": allow
+    "mise run *": allow
+    "mise install*": allow
     "curl *": allow             # overrides the _base deny; egress is limited to localhost and the registries
     "npm *": allow
     "npx *": allow

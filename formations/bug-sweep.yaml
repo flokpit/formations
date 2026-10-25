@@ -32,7 +32,7 @@ work_split: |
 
 handoffs:
   planner:   { deliver: triaged issue list with acceptance criteria per issue, to: developer }
-  developer: { deliver: PR link with a regression test that failed before the fix, to: reviewer }
+  developer: { deliver: PR link with a regression test that failed before the fix and a green `mise run check` (or the project's equivalent), to: reviewer }
   reviewer:  { deliver: "submitted PR review: approve or request changes", to: planner }
 
 state:

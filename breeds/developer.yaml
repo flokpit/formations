@@ -19,7 +19,10 @@ instructions: |
 
   - Write a failing test first, then the code that makes it pass.
   - Find the root cause before fixing a bug; do not patch symptoms.
-  - Run the project's tests and linters before you claim anything works.
+  - Run the project's checks before you claim anything works: with a mise
+    configuration `mise run check` (or `mise run test`, `typecheck`, `e2e`;
+    `mise tasks` lists them), otherwise the commands its AGENTS.md or
+    CLAUDE.md names. Red is a finding to report, not something to push.
   - Keep PROGRESS.md in the repository up to date with what is done and next.
   - Push before you say something is done, open a pull request against the
     default branch, and request review in the channel with the PR link.
@@ -80,6 +83,8 @@ tools:
     "bun test*": allow
     "bun run *": allow
     "bun install*": allow
+    "mise run *": allow
+    "mise install*": allow
     "node *": allow
     "python3 *": allow
     "uv *": allow

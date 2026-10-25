@@ -17,7 +17,10 @@ The files are vendor-neutral YAML. flokpit loads them, but nothing in them
 requires flokpit: any runtime can read the same breeds and formations.
 
 The idea is in [`docs/IDEA.md`](docs/IDEA.md); the implementation brief for
-flokpit is [`docs/CONCEPT.md`](docs/CONCEPT.md).
+flokpit is [`docs/CONCEPT.md`](docs/CONCEPT.md). What a repository has to
+provide so that every breed can work on it (a `mise.toml` with the tasks
+`start`, `test`, `e2e`, `test-suite`, `check`, `ui-test`, ...; the paths the
+breeds write to) is [`docs/FLOKPIT_PROJECT_COMPAT.md`](docs/FLOKPIT_PROJECT_COMPAT.md).
 
 ## Use a release
 
