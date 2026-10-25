@@ -34,7 +34,7 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `os` | 2. OS-level permissions | `user`, `sudo`, `root_filesystem`, `writable_paths`, `tmp_size`, `network.egress` (`none`, `allowlist`), `network.allow` (domains) |
 | `skills` | 3. skills | list of `{source, ref, path, license, review, name?}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit; optional `name` is the install directory (`^[a-z0-9][a-z0-9._-]{0,63}$`), defaulting to the last segment of `path` |
 | `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` |
-| `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`) |
+| `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`). The image carries no project toolchain: a repository declares its tools in `mise.toml` and flokpit installs them at boot; the tasks a project provides per breed are in [`docs/FLOKPIT_PROJECT_COMPAT.md`](../docs/FLOKPIT_PROJECT_COMPAT.md) |
 | `model` | 6. model choice | `class` (`frontier`, `balanced`, `fast`), `effort`, `overridable`, `candidates` (ordered list of `{provider, id, effort?}`; see below) |
 | `limits` | 7. limits and budgets | `max_turns`, `max_budget_usd` (0 = no cap), `summary_budget_usd`, `tighten_only` |
 | `lifecycle` | 8. lifecycle | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` |

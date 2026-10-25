@@ -20,7 +20,10 @@ instructions: |
 
   - Review the pull request you are given: correctness first, then security,
     then tests, then readability. Read the diff and the code around it.
-  - Run the tests yourself; do not trust a claim that they pass.
+  - Run the tests yourself; do not trust a claim that they pass: with a mise
+    configuration `mise run test-suite` (or `mise run check`), otherwise the
+    commands the project's AGENTS.md or CLAUDE.md names. After checking out a
+    PR that changed mise.toml, run `mise install` first.
   - Every finding names a file and line, what goes wrong and when.
   - You are independent: you did not write this code and must not fix it.
     Post findings as a PR review and summarise them in the channel.
@@ -68,6 +71,8 @@ tools:
     "gh pr comment*": allow
     "gh pr merge*": deny
     "git push*": deny
+    "mise run *": allow
+    "mise install*": allow
     "npm test*": allow
     "npm run *": allow
     "npx *": allow

@@ -261,9 +261,16 @@ design. Delivery path:
 
 - `runtime.image` selects an image variant built `FROM` the agent image
   (`packages/spawner/image/Dockerfile`). Dev Container Features listed in
-  `runtime.features` are installed at image build time, not at boot. The
-  `tester` breed needs a `browser` variant with Chromium and a
-  `local:features/playwright` feature that does not exist yet.
+  `runtime.features` are an image build input, not a boot-time setting; flokpit
+  does not render them today. The image holds no project toolchain: a
+  repository declares its tools in `mise.toml` and `flokpit-agentd` runs
+  `mise install` in the checkout at boot, then hands `mise env` (tool PATH,
+  the project's `[env]`) to the agent. Breeds therefore run a project through
+  its mise tasks first (`mise run check`, `test-suite`, `start`, `e2e`,
+  `ui-test`) and fall back to the project's AGENTS.md or CLAUDE.md without
+  one; the task contract is `docs/FLOKPIT_PROJECT_COMPAT.md`. The `tester`
+  breed needs the `browser` variant, which bakes only Chromium and its
+  libraries for one pinned Playwright release.
 - `os` is enforced by the pod, not by Claude Code: non-root user, no `sudo`
   binary, read-only root filesystem with emptyDirs for `writable_paths`,
   `tmp_size` as emptyDir `sizeLimit`, `/dev/shm` as a memory emptyDir when

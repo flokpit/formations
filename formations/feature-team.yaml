@@ -24,7 +24,8 @@ spawn_tree:
   architect: [developer, reviewer, tester]
 
 work_split: |
-  Design first: write an ADR for the feature with the options considered and
+  Design first: read how the project is run (`mise tasks`, else its AGENTS.md
+  or CLAUDE.md) and write an ADR for the feature with the options considered and
   the chosen one. Then split by module or bounded context, never by job
   title: one work item per developer, each with acceptance criteria that can
   be checked by running something. Items must not depend on unmerged work of

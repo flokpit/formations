@@ -25,7 +25,9 @@ members:
 spawn_tree: {}                  # everyone starts with the flock; nobody spawns at runtime
 
 work_split: |
-  There is no task. The tester starts the full application, then keeps
+  There is no task. The tester starts the full application (`mise run start`
+  when the repository has a mise configuration, otherwise as its AGENTS.md or
+  CLAUDE.md says) and drives it with `mise run ui-test`, then keeps
   exploring it with random but plausible UI interactions (clicks, typing,
   navigation, resizing, keyboard-only use) and posts one message per
   problem: steps to reproduce, expected and actual behaviour, screenshot path.
@@ -82,7 +84,8 @@ kickoff: |
   Check with `git ls-remote origin {integration_branch}` that the branch
   exists. If not, ask the first developer in the channel to create it from
   the default branch and push it; you cannot push. Announce the branch.
-  Tell the tester to start the application and begin exploring (the
-  tester needs the browser image; if it reports BLOCKED, tell the human).
+  Tell the tester to start the application (`mise run start`, else per the
+  project's AGENTS.md or CLAUDE.md) and begin exploring (the tester needs the
+  browser image; if it reports BLOCKED, tell the human).
   Tell each developer to check out {integration_branch} and wait for an
   assignment.
