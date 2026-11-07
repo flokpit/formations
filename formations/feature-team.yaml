@@ -19,9 +19,34 @@ members:
   - breed: tester
     count: { min: 0, max: 1 }
     start: on_demand            # only when the feature has a user interface
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled member
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # risk rating and integration tests on every PR of the feature
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
 spawn_tree:
   architect: [developer, reviewer, tester]
+  watchdog: [consultant, developer, reviewer, tester]
+  resumer: [developer, reviewer, tester, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
 
 work_split: |
   Design first: read how the project is run (`mise tasks`, else its AGENTS.md
@@ -57,7 +82,7 @@ termination:
   summary: Feature summary with links to the ADR, all PRs and their review state, open risks, and what a human must merge.
 
 limits:
-  max_agents: 7                 # lead + 4 developers + reviewer + tester
+  max_agents: 12                # lead + 4 developers + reviewer + tester + consultant + 2 pr-checkers + watchdog + resumer
   max_lifetime: 8h
   max_budget_usd: 0
   turn_budget: 40

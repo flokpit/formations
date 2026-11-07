@@ -72,6 +72,17 @@ lifecycle:
 privileges:
   may_spawn: [developer, reviewer]
 
+roosts:
+  - name: issue-labeled
+    description: "Preconfigured roost: an issue labelled epic or plan is cut into tasks."
+    filter:
+      event_name_filter: github.event.issue_labeled
+      event_detail_filter:
+        github.event_detail.label: [epic, plan]
+    task: "Plan issue #{github.event_detail.number} of {github.event_detail.repo} and cut it into tasks: {github.event_detail.url}"
+    max_concurrent: 1
+    cooldown: 10m
+
 credentials:
   github: ["contents:read", "issues:write"]
 

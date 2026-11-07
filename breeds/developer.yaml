@@ -96,6 +96,17 @@ limits:
 lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
 
+roosts:
+  - name: issue-labeled
+    description: "Preconfigured roost: an issue labelled for flokpit becomes this developer's task."
+    filter:
+      event_name_filter: github.event.issue_labeled
+      event_detail_filter:
+        github.event_detail.label: flokpit
+    task: "Implement issue #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 2
+    cooldown: 1m
+
 credentials:
   github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read"]
 

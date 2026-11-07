@@ -98,6 +98,17 @@ limits:
 lifecycle:
   hello: "Hi! My name is {nick}. I test UIs in a headless browser. What should I test?"
 
+roosts:
+  - name: pr-opened-or-updated
+    description: "Preconfigured roost: the end-to-end tests run against every opened or updated pull request."
+    filter:
+      event_name_filter: [github.event.pull_request_opened, github.event.pull_request_updated]
+      event_detail_filter:
+        github.event_detail.draft: false
+    task: "Run the end-to-end tests against pull request #{github.event_detail.number} ({github.event_detail.head_ref}) of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 1
+    cooldown: 5m
+
 credentials:
   github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
 

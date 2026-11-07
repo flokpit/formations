@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: list
         run: |
-          files=$(ls breeds/*.yaml formations/*.yaml | jq -R . | jq -sc .)
+          files=$(ls breeds/*.yaml formations/*.yaml events/*.yaml | jq -R . | jq -sc .)
           echo "files=$files" >> "$GITHUB_OUTPUT"
           echo "$files" | jq -r '.[]'
 

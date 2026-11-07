@@ -45,6 +45,18 @@ pod:
     requests: { cpu: 250m, memory: 512Mi, ephemeral-storage: 1Gi }
     limits:   { cpu: "1",  memory: 1Gi,   ephemeral-storage: 2Gi }
 
+roosts:
+  - name: daily-status
+    description: "Preconfigured roost: a status report every weekday at 09:00 UTC."
+    filter:
+      event_name_filter: townclock.event.hourly
+      event_detail_filter:
+        townclock.event_detail.hour: 9
+        townclock.event_detail.weekday: "/^[1-5]$/"
+    task: "Post the daily status report of {channel} for {townclock.event_detail.at}: open issues, pull requests, agents and what is blocked."
+    max_concurrent: 1
+    cooldown: 12h
+
 workspace:
   clone: false                  # works on GitHub only; no checkout
 

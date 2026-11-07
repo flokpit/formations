@@ -19,10 +19,31 @@ members:
   - breed: planner
     count: { min: 0, max: 1 }
     start: on_demand            # for large backlogs
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_roost             # a decision memo for every issue labelled needs-decision; the watchdog may also bring one in
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
 spawn_tree:
   project-manager: [architect, tester, planner]
   architect: []        # narrowed: no developers in discovery
+  watchdog: [consultant, architect, tester, planner]
+  resumer: [architect, tester, planner, consultant]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: needs-decision
+    breed: consultant
+    preset: issue-labeled
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
 
 work_split: |
   1. The project manager writes the spec (problem, users, goals, non-goals,
@@ -59,7 +80,7 @@ termination:
   summary: Links to the spec, ADRs, acceptance-test PR and backlog, plus open questions and the formation recommended for the build (usually feature-team).
 
 limits:
-  max_agents: 4                 # lead + architect + tester + planner
+  max_agents: 7                 # lead + architect + tester + planner + consultant + watchdog + resumer
   max_lifetime: 6h
   max_budget_usd: 0
   turn_budget: 40
