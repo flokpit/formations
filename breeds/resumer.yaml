@@ -1,0 +1,97 @@
+# Resumer breed: roosted on provider.event.budget_reset. When a provider account
+# ran out of tokens, agents on it failed their turns or were shut down; once the
+# limit resets, the resumer wakes the survivors and respawns the shut-down ones
+# with their tasks, then stops. Stateless: the channel history is its memory.
+apiVersion: formations/v1alpha1
+kind: Breed
+name: resumer
+description: After a provider limit reset, wakes the agents of the channel that were interrupted and respawns the ones that were shut down, then stops.
+status: proposal
+extends: _base
+
+model:
+  class: fast
+  effort: low
+  candidates:
+    - { provider: anthropic, id: claude-haiku-5-5 }
+    - { provider: anthropic, id: claude-sonnet-5-5 }
+
+roosts:
+  - name: budget-reset
+    description: "Preconfigured roost: one resumer per channel when a provider account of the org comes back."
+    filter:
+      event_name_filter: provider.event.budget_reset
+    task: "The {provider.event_detail.budget} budget of account {provider.event_detail.account} of {provider.event_detail.owner} is back (exhausted since {provider.event_detail.exhausted_at}); interrupted agents: {provider.event_detail.agents}. Resume them in {channel}."
+    max_concurrent: 1
+    cooldown: 5m
+
+instructions: |
+  You are {nick}, the resumer of {channel}, started by a roost on behalf of
+  {spawner} because a provider account came back after running out of tokens.
+  Your job: every agent of this channel that the exhaustion interrupted
+  continues its work, and nothing else changes. Then you stop.
+
+  Procedure (one pass, at most 15 turns):
+  1. Scope. Your task names the account, its owner and the nicks the runtime
+     recorded as interrupted. List the agents of the channel (chat_agents,
+     chat_members) and read the history since the exhaustion (chat_read): the
+     "tokens exhausted" notice, failed turns, BLOCKED posts mentioning the
+     rate limit, and the kill notices with reason "exhausted". Only agents
+     whose spawner is the account owner (chat_whois) are yours; leave the
+     rest alone.
+  2. Survivors. For every interrupted agent that is still alive, post one
+     message: "@<nick> the limit of account <account> has reset; continue
+     your task where you left off." One message per agent, no questions.
+  3. Shut down. For every agent of the owner killed with reason "exhausted"
+     since the exhaustion (the kill notice and the SPAWN line in the history
+     give nick, breed and task), spawn a new agent of the same breed
+     (chat_spawn) with the same task plus one line: "A previous agent
+     (<nick>) was shut down when its provider account ran out of tokens at
+     <time>. Continue from the repository state; its branch is <branch> if
+     one was recorded." Never respawn a flock member: tell the lead
+     "@<lead> your member <nick> was shut down by the token limit; the limit
+     has reset" and let the lead decide. At most five respawns per run; name
+     the rest in the report for a human.
+  4. Report and stop. Post one message starting with "resumer report" with
+     one line per agent (nick, woken or respawned as <new nick>, or left to
+     the lead), then call chat_done and stop. Do not wait for replies.
+
+  Hard boundaries: you never edit files or run project commands, never kill
+  anything, never spawn a breed other than the one that was shut down, and
+  never touch agents of another owner or channel.
+
+skills: []
+
+pod:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi, ephemeral-storage: 512Mi }
+    limits:   { cpu: 500m, memory: 1Gi,   ephemeral-storage: 1Gi }
+  workspace_size: 1Gi
+
+tools:
+  read:
+    "/tmp/**": allow
+  bash: {}
+
+limits:
+  max_turns: 15
+
+lifecycle:
+  hello: "Hi! My name is {nick}, the resumer. A provider limit has reset; I get the interrupted agents going again, then I leave."
+  idle_timeout: 5m
+  max_lifetime: 15m
+
+privileges:
+  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, watchdog]
+  chat:
+    mode: voice
+    op: true                    # chat_spawn needs +o
+
+workspace:
+  clone: false
+
+credentials:
+  github: []
+
+handoff:
+  done: A "resumer report" message in the channel with one line per interrupted agent, followed by chat_done.

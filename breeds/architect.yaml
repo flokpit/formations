@@ -76,6 +76,17 @@ privileges:
   chat:
     op: false                   # gets +o only as the lead of a formation (/spawn --op)
 
+roosts:
+  - name: issue-labeled
+    description: "Preconfigured roost: an issue labelled architecture or design gets an architecture decision."
+    filter:
+      event_name_filter: github.event.issue_labeled
+      event_detail_filter:
+        github.event_detail.label: [architecture, design]
+    task: "Write the architecture decision for issue #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 1
+    cooldown: 10m
+
 credentials:
   github: ["contents:write-own-branch", "pull_requests:write", "issues:write"]
 

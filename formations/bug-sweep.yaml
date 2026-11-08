@@ -19,9 +19,43 @@ members:
   - breed: reviewer
     count: { min: 1, max: 1 }
     start: with_flock
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled developer
+  - breed: issue-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # triages issues opened while the sweep runs
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # risk rating and integration tests on every fix PR
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
 spawn_tree:
   planner: [developer, reviewer]
+  watchdog: [consultant, developer, reviewer]
+  resumer: [developer, reviewer, issue-checker, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
+  - name: issue-checker
+    breed: issue-checker
+    preset: new-issue
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
 
 work_split: |
   Triage the issues given (a label, a milestone or a list): reproduce or
@@ -52,7 +86,7 @@ termination:
   summary: Table of issues with status (fixed and approved, escalated, rejected as duplicate or not reproducible) and PR links.
 
 limits:
-  max_agents: 7                 # lead + 5 developers + reviewer
+  max_agents: 14                # lead + 5 developers + reviewer + consultant + 2 issue-checkers + 2 pr-checkers + watchdog + resumer
   max_lifetime: 6h
   max_budget_usd: 0
   turn_budget: 40

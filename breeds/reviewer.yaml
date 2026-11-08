@@ -89,6 +89,17 @@ lifecycle:
   idle_timeout: 20m
   max_lifetime: 4h
 
+roosts:
+  - name: pr-ready
+    description: "Preconfigured roost: every pull request that is opened or marked ready for review gets a review."
+    filter:
+      event_name_filter: github.event.pull_request_opened
+      event_detail_filter:
+        github.event_detail.draft: false
+    task: "Review pull request #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 2
+    cooldown: 1m
+
 workspace:
   clone: true
   branch_prefix: flokpit/

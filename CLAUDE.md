@@ -57,13 +57,26 @@ entries must be subsets of the breed's `privileges.may_spawn`, member
 `overrides` may only lower limits, and `limits.max_agents` must cover the
 lead plus every member at its `count.max`.
 
+## Events (`events/`)
+
+`events/catalogue.yaml` declares every event flokpit can emit (schema
+`specs/event-catalogue.schema.json`): names `<source>.event.<name>`, detail
+keys `<source>.event_detail.<key>`. Roosts (event listeners that spawn a breed
+or fly a formation, `docs/ROOST.md`) can only filter on declared events and
+filterable details. Declare an event here before flokpit emits it. Every breed
+declares its preconfigured roosts (`roosts:`, required, may be empty); a
+formation's `roosts:` creates roosts from member presets with filter
+overrides, and `start: on_roost` members are started only by them. The
+validator checks all of these against the catalogue.
+
 ## Validation
 
-`specs/breed.schema.json` and `specs/formation.schema.json` (JSON Schema
-2020-12) define the file shapes; `scripts/validate.py` checks every file
-against them plus the cross-file rules (merged breeds complete, references
-exist, formations only narrow). Run it after any change to `breeds/`,
-`formations/` or `specs/`; dependencies come from the script's inline
+`specs/breed.schema.json`, `specs/formation.schema.json` and
+`specs/event-catalogue.schema.json` (JSON Schema 2020-12) define the file
+shapes; `scripts/validate.py` checks every file against them plus the
+cross-file rules (merged breeds complete, references exist, formations only
+narrow, event names and detail keys carry their source). Run it after any
+change to `breeds/`, `formations/`, `events/` or `specs/`; dependencies come from the script's inline
 metadata via `uv`:
 
 ```sh
@@ -78,7 +91,7 @@ formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
 The release ships an archive built by `scripts/build-archive.sh`:
-`README.md`, `LICENSE`, `breeds/`, `formations/`, `specs/` and
+`README.md`, `LICENSE`, `breeds/`, `formations/`, `events/`, `specs/` and
 `scripts/validate.py` in a reproducible
 tar.gz (the validator keeps that exact path, so it runs in place after
 extraction), plus a `.sha256` next to it.

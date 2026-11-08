@@ -21,8 +21,33 @@ members:
     overrides:
       limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
       lifecycle: { max_lifetime: 4h }
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled developer
+  - breed: pr-checker
+    count: { min: 0, max: 1 }
+    start: on_roost             # risk rating and integration tests on every fix PR
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
-spawn_tree: {}                  # everyone starts with the flock; nobody spawns at runtime
+spawn_tree:                     # the working members start with the flock; only the roosted helpers spawn at runtime
+  watchdog: [consultant, tester, developer]
+  resumer: [tester, developer, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
 
 work_split: |
   There is no task. The tester starts the full application (`mise run start`
@@ -63,7 +88,7 @@ termination:
   summary: Table of reported UI issues with status (fixed and re-verified, ticketed, dropped as duplicate or not reproducible) and the head commit of the integration branch.
 
 limits:
-  max_agents: 5                 # lead + tester + 3 developers
+  max_agents: 9                 # lead + tester + 3 developers + consultant + pr-checker + watchdog + resumer
   max_lifetime: 8h
   max_budget_usd: 0
   turn_budget: 60

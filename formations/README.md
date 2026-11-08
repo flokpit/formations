@@ -27,8 +27,9 @@ Validate with `uv run scripts/validate.py`.
 | `name`, `description`, `status`, `shape` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
 | `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly; if it is missing, a developer creates it (the lead is read-only for git writes) |
 | `lead` | 1. lead | `breed`, `op` (lead gets `+o` in the flock channel), `overrides` |
-| `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand, overrides}` |
+| `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand \| on_roost, overrides}`; `on_roost` members are started only by a roost of the formation |
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |
+| `roosts` | 3a. roosts | list of `{name, breed, preset, filter?, task?, max_concurrent?, cooldown?}`: roosts that `/fly` creates in the flock channel and `/land` removes, each from a member breed's preconfigured roost (`preset`, a name from the breed's `roosts`) with overrides (`event_name_filter` replaces, `event_detail_filter` merges per key and `null` removes a key, `task` and guards replace); placeholders are rendered at `/fly`; see [`docs/ROOST.md`](../docs/ROOST.md) section 4 |
 | `work_split` | 4. work split | how the lead decomposes the task (text, rendered into the lead's instructions) |
 | `handoffs` | 5. hand-off contract | breed → `{deliver, to}`; uses flokpit intents `DONE`, `BLOCKED`, `QUESTION` |
 | `state` | 6. shared state | `kind` (`github-issues`), `label`, `progress_file` |
@@ -47,6 +48,12 @@ Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
 - **Tighten only.** A formation may narrow its breeds, never widen them:
   `spawn_tree` entries must be subsets of the breed's `privileges.may_spawn`,
   and `overrides` may only lower limits or remove tools.
+- **Roosts narrow too.** A formation roost starts from a breed preset and may
+  only change its filters, task and guards, never the breed; the merged filter
+  must still name declared events and filterable details. An `on_roost`
+  member must have a roost of the formation that names its breed, and its
+  `count.max` bounds how many the roost may have alive (`max_agents` counts
+  them like every member).
 - **Independent verification.** With `verifier_is_not_author: true`, no agent
   verifies work it produced.
 - **Limits stack.** Each agent keeps its breed limits; the flock limits apply
