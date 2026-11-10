@@ -128,9 +128,10 @@ preset, overriding only what differs:
 /roost add nightly   from planner/issue-labeled github.event_detail.label=nightly "Plan the nightly issue {github.event_detail.url}"
 ```
 
-Grammar: `/roost add <name> from <breed>[/<preset>] [<detail key>=<pattern> | <detail key>= ...] [<task>]`;
-without `/<preset>` the breed's first preset is used, a bare `<key>=` removes
-that key from the preset's detail filter. The UI's "Add roost" dialog does the
+Grammar: `/roost add <name> from <breed>[/<preset>] [on <event_name_filter>] [<detail key>=<pattern> | <detail key>= ...] [<task>]`;
+without `/<preset>` the breed's first preset is used, `on` replaces the
+preset's event (R-11, e.g. `from watchdog/quarter-hour on townclock.event.minutely`),
+a bare `<key>=` removes that key from the preset's detail filter. The UI's "Add roost" dialog does the
 same: pick a breed, pick a preset, edit the filters.
 
 The command is sugar; the canonical form is the JSON filter expression of
@@ -188,11 +189,20 @@ Rules:
 Agents cause events (pushing a branch opens a PR, a spawn is an
 `agent.event.spawned` event). Without guards a roost can chase its own tail.
 
-- **R-6** Every roost has `max_concurrent` (default 1): a firing is skipped
-  while that many agents started by the roost are still alive.
+- **R-6** Every roost has `max_concurrent` (default 1): while that many
+  agents started by the roost are still alive, a match is queued, not
+  dropped (flokpit issue #265). The queue fires in order when a slot frees
+  and the cooldown allows; it holds at most 20 matches per roost (the
+  oldest is dropped as skipped `concurrent`) for at most 24 h, a queued
+  match that no longer matches the roost's filter is dropped as `expired`,
+  a paused roost keeps its queue and a removed one drops it. An agent
+  frees its slot when it ends or when it posts with intent `BLOCKED`.
 - **R-7** Every roost has `cooldown` (default `1m`) and a per-channel cap of
-  firings per hour (`FLOKPIT_ROOST_MAX_FIRINGS_PER_HOUR`, default 30). Skipped
-  firings are recorded with the reason (`concurrent`, `cooldown`, `rate`).
+  firings per hour (`FLOKPIT_ROOST_MAX_FIRINGS_PER_HOUR`, default 30). A match
+  arriving while older ones wait in the queue joins it; otherwise skips are
+  final and recorded with the reason (`cooldown`, `rate`). The firing log
+  shows a queued match as `queued` until it fires or is dropped, and a firing
+  whose agent never started as `failed` with the reason.
 - **R-8** Events are deduplicated by the envelope id (GitHub delivery id,
   townclock minute, agent nick plus spawn turn) within 24h.
 - **R-9** Internal events carry `caused_by` in the envelope and, where
