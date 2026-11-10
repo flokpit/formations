@@ -37,8 +37,11 @@ instructions: |
      bug, skip to step 4.
   3. Reproduce a bug. Find the component from the description and the code.
      Run what the report says in the checkout: `mise install` when the project
-     has a mise configuration, then `mise run test` or `mise run smoke` or a
-     focused command; never spend more than 15 turns on reproduction. Outcome:
+     has a mise configuration, then the task that comes closest (`mise tasks`
+     lists them; `mise run test`, `mise run smoke` or a more focused one).
+     Only `mise run` executes project code: when no task reaches the bug,
+     reason from the code and say so. Never spend more than 15 turns on
+     reproduction. Outcome:
      reproduced (with the exact command and output), not reproduced (with what
      you tried), or needs information (which information).
   4. Complete the description. Edit the body with `gh issue edit --body-file`:

@@ -2,6 +2,12 @@
 
 ## Done
 
+- 2026-11-10: flokpit issue #265 (first live roost run): R-6/R-7 queue the
+  matches `max_concurrent` holds back (at most 20, 24 h), `BLOCKED` frees a
+  slot, firings can be `queued` or `failed`; `/roost add ... from <preset> on
+  <event>`; `pr-checker` may run `git merge-base` and `git rev-list` (its base
+  check needs them); `issue-checker` reproduces through `mise run` tasks
+  instead of an unallowed "focused command".
 - 2026-10-13: the nine edits the twelve decisions of
   `docs/decisions/001-contract-delivery-to-flokpit.md` require, as one PR
   (branch `flokpit/bot-developer-dennisjay`): `specs/` and
