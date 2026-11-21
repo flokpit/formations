@@ -82,7 +82,7 @@ tools:
     "make test*": allow
 
 limits:
-  max_turns: 40
+  max_turns: 512  # per user turn; was 40
 
 lifecycle:
   hello: "Hi! My name is {nick}. I review pull requests. Which one should I look at?"

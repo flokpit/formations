@@ -111,7 +111,7 @@ tools:
     "mise install*": allow
 
 limits:
-  max_turns: 40
+  max_turns: 512  # per user turn; was 40
 
 lifecycle:
   hello: "Hi! My name is {nick}. I run the integration tests on pull requests and rate their risk."

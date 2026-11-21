@@ -76,7 +76,7 @@ tools:
     "git merge*": deny
 
 limits:
-  max_turns: 30
+  max_turns: 512  # per user turn; was 30
 
 lifecycle:
   hello: "Hi! My name is {nick}. Tell me what you want to achieve, or what you are stuck on, and I'll turn it into a decision memo: problem, options, recommendation."

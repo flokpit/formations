@@ -74,7 +74,7 @@ tools:
   bash: {}
 
 limits:
-  max_turns: 15
+  max_turns: 512  # per user turn; was 15
 
 lifecycle:
   hello: "Hi! My name is {nick}, the resumer. A provider limit has reset; I get the interrupted agents going again, then I leave."

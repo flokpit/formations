@@ -93,7 +93,7 @@ tools:
     "agent-browser *": allow
 
 limits:
-  max_turns: 60
+  max_turns: 512  # per user turn; was 60
 
 lifecycle:
   hello: "Hi! My name is {nick}. I test UIs in a headless browser. What should I test?"

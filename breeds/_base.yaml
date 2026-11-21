@@ -52,7 +52,7 @@ runtime:
   features: []
 
 limits:
-  max_turns: 60                 # per user turn
+  max_turns: 512  # per user turn; was 60
   max_budget_usd: 0             # 0 = no cap
   summary_budget_usd: null
   tighten_only: true

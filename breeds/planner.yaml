@@ -63,7 +63,7 @@ tools:
     "gh issue delete*": deny
 
 limits:
-  max_turns: 60
+  max_turns: 512  # per user turn; was 60
 
 lifecycle:
   hello: "Hi! My name is {nick}. I break goals into plans and issues. What is the goal?"

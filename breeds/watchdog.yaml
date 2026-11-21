@@ -93,7 +93,7 @@ tools:
   bash: {}
 
 limits:
-  max_turns: 20
+  max_turns: 512  # per user turn; was 20
 
 lifecycle:
   hello: "Hi! My name is {nick}, the watchdog. I check that everyone here is alive and working, then I leave."

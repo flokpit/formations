@@ -19,7 +19,7 @@ members:
     count: { min: 3, max: 3 }
     start: with_flock
     overrides:
-      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
+      limits: { max_turns: 256 } # small fixes; narrowed from the breed's 512 (was 40)
       lifecycle: { max_lifetime: 4h }
   - breed: consultant
     count: { min: 0, max: 1 }
