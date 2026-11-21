@@ -7,7 +7,10 @@ shape: orchestrator-workers-verifier
 
 lead:
   breed: architect
-  op: true
+  op: true                      # v1 leftover, ignored by flokpit v2
+
+lead_commands: [land, kick, honk]   # flokpit v2 grants for the lead (fly, land, kick, rename, set, trigger, meta, honk)
+member_commands: [honk]
 
 members:
   - breed: developer

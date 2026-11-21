@@ -104,7 +104,8 @@ keep a diverging copy of them (see X-2).
 | `limits` | `max_turns`, `max_budget_usd`, `summary_budget_usd`, `tighten_only` | same names |
 | `lifecycle` | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` | same names (top-level) |
 | `tools` | category → pattern → `allow`/`deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents` | `tools.allow`, `tools.deny` (Claude rule strings) |
-| `privileges` | `may_spawn`, `chat.mode`, `chat.op` | `may_spawn` |
+| `privileges` | `may_spawn`, `chat.mode`, `chat.op` (ignored by flokpit v2) | `may_spawn` |
+| `commands` | `fly`, `land`, `kick`, `rename`, `set`, `trigger`, `meta`, `honk` (flokpit v2 grants; replaces `chat.op`) | `fly` needs `may_spawn` |
 | `workspace` | `clone`, `branch_prefix` | `workspace.clone`, `workspace.branch_prefix` |
 | `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch`; `contents:write-integration-branch` lets a developer push to the flock's `integration_branch`, never the default branch | – (gateway decides today) |
 | `handoff` | `done`, `next` | – |
@@ -114,7 +115,7 @@ Merge rule: maps merge recursively, lists and scalars replace. A breed's
 
 ### 4.2 Formation (`kind: Formation`)
 
-Sections: `lead {breed, op, overrides}`, `members[] {breed, count {min, max},
+Sections: `lead {breed, op, overrides}`, `lead_commands`, `member_commands` (v2 grants; `op` is ignored by v2), `members[] {breed, count {min, max},
 start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 `handoffs`, `state`, `verification`, `termination {conditions, summary}`,
 `limits {max_agents, max_lifetime, max_budget_usd, turn_budget}`, `channel`,

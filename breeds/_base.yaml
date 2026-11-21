@@ -127,7 +127,9 @@ privileges:
   may_spawn: []
   chat:
     mode: voice                 # +v
-    op: false
+    op: false                   # v1 leftover: flokpit v2 ignores it, `commands` below is what grants
+
+commands: [honk]                # flokpit v2 chat commands the agent may use (fly, land, kick, rename, set, trigger, meta, honk); lists replace
 
 workspace:
   clone: true

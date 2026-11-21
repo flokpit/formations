@@ -104,7 +104,9 @@ privileges:
   may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker]
   chat:
     mode: voice
-    op: true                    # chat_kill and chat_spawn need +o
+    op: true                    # v1 leftover, ignored by flokpit v2; the grants are in `commands`
+
+commands: [honk, fly, land]     # land stuck agents, fly them again (chat_kill / chat_spawn in v1)
 
 workspace:
   clone: false                  # it reads the chat, not the repository

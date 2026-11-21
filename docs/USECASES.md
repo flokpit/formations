@@ -21,8 +21,8 @@ then reconciled with the upstream changes of the same weeks (breeds renamed to
 and 2 describe the configuration **before** that change (they are the
 evidence for it); section 3 is what was applied, with the deviations listed at
 its top; section 7 re-runs the timelines. The new breeds (consultant,
-pr-checker, issue-checker, watchdog, resumer) and `ui-bugfixing` were not
-walked.
+pr-checker, issue-checker, watchdog, resumer) and `ui-bugfixing` are walked in
+section 8.
 
 Legend: ✅ works as configured · ⚠️ works with a caveat or depends on
 something unverified · ❌ blocked by the current configuration.
@@ -593,3 +593,71 @@ direct merge bypasses `reviewer-approved`. Still open: either accept direct
 merges for those formations, or add a review-gated integration step (the lead
 integrates approved, green PRs through a flokpit tool, which was my original
 proposal).
+
+## 8. Second pass: the event breeds, ui-bugfixing, and the errors of the live k3s run
+
+Added after flokpit's v3 k3s bugfixing run (flokpit#323, 2026-11-21) and the
+review of PR #18. Sources: the findings note of that run
+(`notes/v3-k3s-bugfixing-findings.md` in flokpit) and the cluster events;
+the server pod's log had been rotated by a restart, so the list below is the
+run's own record, not a log grep. Method as before, **paper simulation**: the
+only things executed on the cluster were a taskless `bug-sweep` flight, one
+tester turn and echo flocks.
+
+### 8.1 Errors of the run and what prevents their repeat
+
+| Error in the run | Cause | Where it is handled |
+|---|---|---|
+| every clone answered 407 | agentd cloned without the agent's proxy identity | flokpit (`networkEnv`); nothing in breeds |
+| `mise install` refused: api.npmjs.org, npm.jsr.io, api.osv.dev, tuf-repo-cdn.sigstore.dev | egress allowlist too narrow for toolchain installs | flokpit unions `TOOLCHAIN_EGRESS_HOSTS` (wildcards) into **every** agent's allowlist, also where a breed sets its own `os.network.allow`; breeds therefore list only extra docs hosts |
+| `watchdog` and `resumer` cannot `fly` or `land` | the breeds relied on `privileges.op`, which v2 ignores | **fixed here:** `commands: [honk, fly, land]` and `[honk, fly]`; formations carry `lead_commands`/`member_commands`; the validator rejects `fly` without `may_spawn` |
+| `ErrImagePull` for the default image | breed named the shipped default image | flokpit; breeds use `runtime.image: base` |
+| turn limit hit in long runs | `max_turns` 15 to 60 | PR #18: 512 per breed, 256 for the flock overrides |
+| a turn's final answer never shown | agent did not call `chat_send` | flokpit; instructions already end with `chat_done`/DONE posts |
+| a run without a task paid for an empty turn | taskless flight | flokpit holds it; `ui-bugfixing` is the one formation that is meant to run without a task, its lead has the kickoff as its first message |
+
+### 8.2 Breeds not walked before
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| W-1 | Watchdog: inventory, ask a quiet agent | `chat_agents`, `chat_whois`, `chat_read`, `chat_send` (MCP `flokpit/*`) | ✅ no shell needed |
+| W-2 | Watchdog: land a stuck agent, fly a replacement | `land`, `fly` command grants, `may_spawn` | ❌ before (`op` ignored), ✅ now. ⚠️ the replacement is created in the project; that it joins the flock of the stuck member is unverified |
+| W-3 | Watchdog: bring in a consultant for a troubled agent | `fly`, `may_spawn: [consultant]` | ✅ now |
+| W-4 | Resumer: wake survivors | `chat_send` | ✅ |
+| W-5 | Resumer: respawn an agent that the token limit killed | `fly`, `may_spawn` | ❌ before, ✅ now |
+| C-1 | Consultant: write a decision memo for a `needs-decision` issue and push it | `gh issue view`, edit `docs/decisions/**`, `git add docs/decisions/*`, commit, `git push origin {branch}`, `gh issue comment`; `contents:write-own-branch`, `issues:write` | ✅ |
+| C-2 | Consultant: look at open PRs for context | `gh pr list`, `gh pr view` | ✅ |
+| C-3 | Consultant: look up an external source for the memo | `WebFetch`, egress host | ⚠️ `webfetch: {}` and only base hosts; the memo is limited to the repository and the issue (decide whether to add docs hosts like the architect) |
+| PC-1 | PR checker: check out a PR, install, run the integration tests | `gh pr checkout`, `mise install`, `mise run test-suite\|check\|test`; egress via toolchain hosts | ✅ |
+| PC-2 | PR checker: rate risk (size, conflicts, base moved) | `gh pr diff`, `git merge-tree`, `git merge-base`, `git rev-list` | ✅ |
+| PC-3 | PR checker: one comment per PR, request changes when critical | `gh pr comment`, `gh pr review --request-changes --body-file`, body in `/tmp`; `pull_requests:write` | ✅ ("update" is a new comment that supersedes the old one because `gh api` is not allowed) |
+| PC-4 | PR checker: a PR from a fork | `gh pr checkout` of a fork branch | ⚠️ works with a public fork; the gateway token has no access to a private one |
+| IC-1 | Issue checker: read, classify, label | `gh issue view\|list`, `gh label list`, `gh issue edit --add-label`; `issues:write` | ✅ |
+| IC-2 | Issue checker: reproduce a bug | `mise install`, `mise run <task>`; no other project execution | ⚠️ only when a task reaches the bug; the breed says so and falls back to reading code |
+| IC-3 | Issue checker: replace the triage section in the body | `gh issue edit --body-file` | ✅ |
+
+### 8.3 ui-bugfixing as a timeline
+
+| Step | Who | Needs | Result |
+|---|---|---|---|
+| 1 | flokpit | `/fly ui-bugfixing` with no task; creates channel, roosts (watchdog, resumer, pr-checker preset with `head_ref: flokpit/*`) | ✅ roosts need the event catalogue pinned with the breeds |
+| 2 | planner (lead) | kickoff: `git ls-remote origin {integration_branch}`; cannot push | ✅ asks a developer to create the branch |
+| 3 | developer | create and push `ui-bugfixing/{date}`; credential `contents:write-integration-branch` | ✅ |
+| 4 | tester | `mise run start`, `mise run ui-test`, headless browser, `localhost` | ✅ in the browser image; ⚠️ a pod without it reports BLOCKED, the lead tells the human |
+| 5 | tester → planner | one message per UI issue with screenshot path | ⚠️ the path lives in the tester's pod; the planner (another pod) cannot open it. The report must name a committed path or paste the steps; the steps are enough to triage |
+| 6 | planner | file an issue for risky items: `gh issue create`, label `flock:{flock}` (`gh label create`) | ✅ |
+| 7 | developer | fix, regression check, merge into the integration branch, push | ✅ |
+| 8 | pr-checker | roosted by `pull_request_updated` of the flock's own branches | ✅ ⚠️ only when the fix goes through a PR; direct merges into the integration branch raise no PR event |
+| 9 | watchdog | every 15 minutes: ask, land and fly | ✅ now (was ❌, see W-2) |
+| 10 | resumer | on `provider.event.budget_reset` | ✅ now (was ❌, see W-5) |
+| 11 | planner | land the flock: `/land` (in `lead_commands`) | ✅ |
+| 12 | termination `no_progress_rounds: 3` | workflow-detected | ✅ |
+
+### 8.4 Still open after this pass
+
+- Use cases that need a real multi-agent flock with model turns have not been
+  executed; everything above is paper plus the one tester turn of the run.
+- W-2 (replacement joins the flock), C-3 (consultant web access) and step 5
+  (screenshots across pods) are decisions or flokpit questions, not
+  permission gaps in the breed files.
+- Reviewer approval with distinct identities (F-8) is unchanged.
