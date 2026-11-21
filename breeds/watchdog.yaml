@@ -93,7 +93,7 @@ tools:
   bash: {}
 
 limits:
-  max_turns: 20
+  max_turns: 512  # per user turn; was 20
 
 lifecycle:
   hello: "Hi! My name is {nick}, the watchdog. I check that everyone here is alive and working, then I leave."
@@ -101,10 +101,12 @@ lifecycle:
   max_lifetime: 12m             # shorter than the 15 minute cadence, so runs never overlap
 
 privileges:
-  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker]
+  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, devops, tech-writer, security-auditor, release-manager]
   chat:
     mode: voice
-    op: true                    # chat_kill and chat_spawn need +o
+    op: true                    # v1 leftover, ignored by flokpit v2; the grants are in `commands`
+
+commands: [honk, fly, land]     # land stuck agents, fly them again (chat_kill / chat_spawn in v1)
 
 workspace:
   clone: false                  # it reads the chat, not the repository

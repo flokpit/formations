@@ -1,0 +1,158 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: maintenance
+description: Keeps a repository healthy for a working day without a task; every new issue is triaged, every pull request checked and reviewed, labelled issues are implemented, a red pipeline is diagnosed, dependencies and security are audited weekly. Everything but the lead is started by events.
+status: proposal
+shape: event-driven-standing
+
+lead:
+  breed: project-manager
+
+lead_commands: [land, kick, honk]   # flokpit v2 grants for the lead; no fly: events start the members
+member_commands: [honk]
+
+members:
+  - breed: issue-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # every issue opened in the repository
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # every opened or updated pull request, humans' ones too
+  - breed: reviewer
+    count: { min: 0, max: 2 }
+    start: on_roost             # every pull request that is ready for review
+  - breed: developer
+    count: { min: 0, max: 2 }
+    start: on_roost             # issues labelled flokpit, and reviews that request changes on flokpit branches
+  - breed: devops
+    count: { min: 0, max: 1 }
+    start: on_roost             # a failed run on the default branch; dependencies every Monday
+  - breed: security-auditor
+    count: { min: 0, max: 1 }
+    start: on_roost             # every Monday
+  - breed: tech-writer
+    count: { min: 0, max: 1 }
+    start: on_roost             # issues labelled documentation
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_roost             # issues labelled needs-decision; the watchdog may also bring one in
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
+
+spawn_tree:                     # the lead spawns nobody: events do
+  watchdog: [consultant, developer, reviewer, devops, tech-writer]
+  resumer: [developer, reviewer, devops, tech-writer, issue-checker, pr-checker, security-auditor, consultant]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: issue-checker
+    breed: issue-checker
+    preset: new-issue
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - name: reviewer
+    breed: reviewer
+    preset: pr-ready
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - name: developer-issue
+    breed: developer
+    preset: issue-labeled
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - name: developer-review
+    breed: developer
+    preset: changes-requested
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # only branches agents wrote; a human's PR is the human's to fix
+  - name: devops-ci
+    breed: devops
+    preset: ci-failed
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - { name: devops-dependencies, breed: devops, preset: weekly-dependencies }
+  - { name: security-audit, breed: security-auditor, preset: weekly-audit }
+  - name: tech-writer
+    breed: tech-writer
+    preset: issue-labeled
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+  - name: needs-decision
+    breed: consultant
+    preset: issue-labeled
+    filter: { event_detail_filter: { github.event_detail.repo: "{repo}" } }
+
+work_split: |
+  There is no task and the lead hands out no work: events do. A new issue
+  gets an issue-checker (type, reproduction, labels). An issue a human
+  labels `flokpit` gets a developer, who opens a pull request; every pull
+  request gets a pr-checker (risk, tests) and a reviewer; a review that
+  requests changes on an agent's branch brings a developer back to it. A
+  failed run on the default branch gets a devops agent; Mondays bring the
+  dependency pass and the security audit; `documentation` and
+  `needs-decision` labels bring a tech-writer and a consultant.
+  The project manager watches the channel: it keeps issues labelled and
+  linked to their pull requests, notices work nobody picked up (an agent
+  that reported BLOCKED, an approved pull request waiting for a human, an
+  issue the checker could not classify), asks the humans, and posts a status
+  report at the end of the day. Humans steer with labels and merge.
+
+handoffs:
+  issue-checker:    { deliver: "triaged issue: type, severity, reproduction result, labels", to: project-manager }
+  developer:        { deliver: "PR link with passing tests and the issue it closes", to: reviewer }
+  devops:           { deliver: "fix PR with green checks, or the diagnosis with the run link", to: reviewer }
+  tech-writer:      { deliver: "PR with the documentation change and the examples that were run", to: reviewer }
+  pr-checker:       { deliver: "risk comment on the PR; changes requested when critical", to: project-manager }
+  reviewer:         { deliver: "submitted PR review: approve or request changes", to: project-manager }
+  security-auditor: { deliver: "findings as issues or private advisories with a summary", to: project-manager }
+  consultant:       { deliver: "decision memo on its branch, linked on the issue", to: project-manager }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+
+verification:
+  required: [reviewer-approved, ci-green]
+  optional: [pr-checker-rating-below-4]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - human_stop
+    - limits_reached            # the day is over; fly it again, or roost it on townclock.event.daily
+  summary: Status report of the day; issues triaged, pull requests opened, reviewed and waiting for a human merge, pipeline and audit results, what is blocked and which decisions the humans owe.
+
+limits:
+  max_agents: 16                # lead + 2 issue-checkers + 2 pr-checkers + 2 reviewers + 2 developers + devops + security-auditor + tech-writer + consultant + watchdog + resumer
+  max_lifetime: 12h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "maintenance: {repo}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - merge_to_default_branch
+  - security_finding_high_or_critical
+  - issue_needs_design_decision
+  - pipeline_broken_outside_the_repository
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Post what this flock reacts to (new issues, pull requests, the labels
+  `flokpit`, `documentation`, `needs-decision`, a red default branch, Monday
+  audits) so the humans know how to steer it. Then take stock: open pull
+  requests without a review, issues without labels, the state of the last
+  run on the default branch (`gh pr list`, `gh issue list`, `gh run list`),
+  and post it as the first status report. Events that happened before the
+  flock flew start nobody: name those items so a human can relabel or
+  reopen them.

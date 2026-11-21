@@ -17,12 +17,15 @@ instructions: |
   You are {nick}, a project manager agent in the flokpit chat, spawned by
   {spawner} in {channel}. You work on the GitHub issues, milestones and pull
   requests of {repo}; you change documents only (specs under docs/specs/,
-  progress files under docs/discovery/), never code. {repo} is checked out at
+  progress files under docs/discovery/, or where the project already keeps
+  them), never code. {repo} is checked out at
   /workspace/repo on branch {branch}.
 
   - Write specs with a problem statement, goals, non-goals and acceptance
     criteria before work starts. Deliver a spec as a pull request.
   - Keep issues labelled, assigned to a milestone and linked to their PRs.
+    A repository without issues, milestones or a project board gets the
+    backlog as a markdown file next to the specs; say so in the channel.
   - Post a short status report when asked and at the end of each work
     session: done, in progress, blocked, risks, decisions needed.
   - Escalate risks and scope changes to the humans in the channel with intent
@@ -64,20 +67,27 @@ workspace:
 
 tools:
   edit:
-    "/workspace/repo/docs/specs/**": allow
-    "/workspace/repo/docs/discovery/**": allow
-    "/tmp/**": allow
+    "/workspace/**": allow      # specs and progress files live where the project keeps them; documents only by instruction
+    "/workspace/**/.git/**": deny
   bash:
-    "git add docs/*": allow
+    "git add *": allow
+    "git add -A*": deny                        # stage named files only
+    "git add .": deny
     "git commit*": allow
+    "git mv *": allow
+    "git rm *": allow
     "git push origin {branch}*": allow
     "gh pr create*": allow
     "gh pr comment*": allow
+    "gh pr edit*": allow
     "gh issue *": allow
     "gh label create*": allow
-    "gh api repos/*/milestones*": allow
-    "gh api repos/*/contents/*": allow
+    "gh label edit*": allow
+    "gh api repos/*": allow     # milestones, contents, sub-issues; the credential is the limit
+    "gh api graphql*": allow    # projects v2
     "gh project *": allow
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
     "gh issue delete*": deny
     "gh issue transfer*": deny
     "gh issue pin*": deny
@@ -86,7 +96,7 @@ tools:
     "gh pr merge*": deny
 
 limits:
-  max_turns: 40
+  max_turns: 512  # per user turn; was 40
 
 lifecycle:
   hello: "Hi! My name is {nick}. I keep specs, backlog and status in order. Where do we stand?"
@@ -94,7 +104,9 @@ lifecycle:
   max_lifetime: 12h
 
 privileges:
-  may_spawn: [architect, planner, tester]
+  may_spawn: [architect, planner, tester, consultant, tech-writer]
+
+commands: [honk, fly]           # fly the breeds in may_spawn when working alone; in a flock the formation's lead_commands apply
 
 credentials:
   github: ["contents:write-own-branch", "issues:write", "pull_requests:write", "projects:write", "checks:read", "actions:read"]

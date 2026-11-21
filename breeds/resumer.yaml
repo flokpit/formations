@@ -74,7 +74,7 @@ tools:
   bash: {}
 
 limits:
-  max_turns: 15
+  max_turns: 512  # per user turn; was 15
 
 lifecycle:
   hello: "Hi! My name is {nick}, the resumer. A provider limit has reset; I get the interrupted agents going again, then I leave."
@@ -82,10 +82,12 @@ lifecycle:
   max_lifetime: 15m
 
 privileges:
-  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, watchdog]
+  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, watchdog, devops, tech-writer, security-auditor, release-manager]
   chat:
     mode: voice
-    op: true                    # chat_spawn needs +o
+    op: true                    # v1 leftover, ignored by flokpit v2; the grants are in `commands`
+
+commands: [honk, fly]           # fly agents and flocks again (chat_spawn in v1)
 
 workspace:
   clone: false

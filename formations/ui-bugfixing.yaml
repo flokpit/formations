@@ -9,7 +9,10 @@ integration_branch: "ui-bugfixing/{date}"
 
 lead:
   breed: planner
-  op: true
+  op: true                      # v1 leftover, ignored by flokpit v2
+
+lead_commands: [fly, land, kick, honk]   # flokpit v2 grants for the lead: fly its members, land and kick them, land the flock
+member_commands: [honk]
 
 members:
   - breed: tester
@@ -19,7 +22,7 @@ members:
     count: { min: 3, max: 3 }
     start: with_flock
     overrides:
-      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
+      limits: { max_turns: 256 } # small fixes; narrowed from the breed's 512 (was 40)
       lifecycle: { max_lifetime: 4h }
   - breed: consultant
     count: { min: 0, max: 1 }

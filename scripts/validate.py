@@ -214,6 +214,8 @@ def check_breeds(schemas, errors, catalogue=None):
         for target in breed.get("privileges", {}).get("may_spawn", []):
             if target not in resolved:
                 errors.append(f"{rel}: privileges/may_spawn names unknown breed {target!r}")
+        if "fly" in breed.get("commands", []) and not breed.get("privileges", {}).get("may_spawn"):
+            errors.append(f"{rel}: commands grants 'fly' but privileges/may_spawn is empty")
         nxt = breed.get("handoff", {}).get("next")
         if nxt and nxt not in resolved:
             errors.append(f"{rel}: handoff/next names unknown breed {nxt!r}")
@@ -277,6 +279,8 @@ def check_formations(schemas, breeds, errors, catalogue=None):
                     errors.append(f"{rel}: spawn_tree/{spawner} adds {target!r}, not in the breed's may_spawn {allowed}")
                 if target not in participants:
                     errors.append(f"{rel}: spawn_tree/{spawner} names {target!r}, which is not a member")
+        if doc["spawn_tree"].get(lead) and "lead_commands" in doc and "fly" not in doc["lead_commands"]:
+            errors.append(f"{rel}: the lead spawns {doc['spawn_tree'][lead]} but lead_commands does not grant 'fly'")
         spawnable = {t for targets in doc["spawn_tree"].values() for t in targets}
         for i, member in enumerate(doc["members"]):
             if member["start"] == "on_demand" and member["breed"] not in spawnable:

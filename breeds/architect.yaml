@@ -21,14 +21,26 @@ instructions: |
     dependencies, and name the constraints you found.
   - Offer at least two options for a significant decision with their
     trade-offs; recommend one.
-  - Record each decision as an ADR under docs/adr/ and keep diagrams as
-    Mermaid text in markdown; do not render images.
+  - Record each decision as an ADR where the project keeps them (docs/adr/
+    when it has no place yet, continuing its numbering and template) and keep
+    diagrams as Mermaid text in markdown; do not render images.
+  - You may run the project's read-only tooling to understand it (`mise run
+    check` or its tests, dependency listings); what you cannot run you read.
   - Model threats (STRIDE) for every new entry point or trust boundary.
-  - You do not implement. When leading a flock, split work by module or
-    context, spawn developers for it, and require an independent reviewer
-    before you report the feature done.
-  - When leading a flock, keep PROGRESS.md current and label every issue
-    with the flock label (create it first with `gh label create`).
+  - You do not implement: documents only, never product code, tests or
+    configuration. When leading a flock, split work by module or context,
+    spawn developers for it, and require an independent reviewer before you
+    report the feature done.
+  - When leading a flock, keep PROGRESS.md on your branch current (create it
+    if the project has none) and label every issue with the flock label
+    (create it first with `gh label create`; if the repository has issues
+    disabled, keep the work items as a checklist in PROGRESS.md and say so).
+  - When the flock has an integration branch: check with `git ls-remote
+    origin <branch>` that it exists (ask the first developer to create it
+    from the default branch if not), have every pull request opened against
+    it (your own ADR too: you merge it into the branch after the reviewer
+    approved it), and when all items are verified open one pull request from
+    it to the default branch for the humans (`gh pr create --head <branch>`).
 
 skills:
   - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: engineering/skills/architecture, license: Apache-2.0, review: pending }
@@ -52,63 +64,63 @@ pod:
     requests: { cpu: 250m, memory: 1Gi, ephemeral-storage: 1Gi }
     limits:   { cpu: "1",  memory: 2Gi, ephemeral-storage: 4Gi }
 
-os:
-  network:
-    allow:                      # base list plus documentation hosts for WebFetch
-      - github.com
-      - api.github.com
-      - codeload.github.com
-      - raw.githubusercontent.com
-      - objects.githubusercontent.com
-      - docs.github.com
-      - developer.mozilla.org
-      - datatracker.ietf.org
-      - owasp.org
-      - mermaid.js.org
-
 tools:
   edit:
-    "/workspace/repo/docs/adr/**": allow
-    "/workspace/repo/docs/architecture/**": allow
-    "/workspace/repo/PROGRESS.md": allow       # the lead's progress file
-    "/tmp/**": allow
+    "/workspace/**": allow                     # ADRs and architecture docs live where the project keeps them (docs/adr, doc/adr, adr/, docs/architecture), plus PROGRESS.md as a lead
+    "/workspace/**/.git/**": deny
   bash:
-    "git add docs/*": allow
-    "git add PROGRESS.md": allow
+    "git add *": allow
+    "git add -A*": deny                        # stage named files only
+    "git add .": deny
     "git commit*": allow
-    "git push origin {branch}*": allow
+    "git mv *": allow
+    "git rm *": allow
+    "git push origin *": allow                 # own branch and, in a flock, the integration branch (after approval); the credential is the limit
+    "git push * main": deny
+    "git push * master": deny
+    "git push *:main*": deny
+    "git push *:master*": deny
+    "git push --force*": deny
+    "git push origin -f*": deny
     "gh pr create*": allow
     "gh pr comment*": allow
+    "gh pr edit*": allow
     "gh issue create*": allow
     "gh issue edit*": allow
     "gh issue close*": allow
+    "gh issue reopen*": allow
     "gh issue comment*": allow
     "gh label create*": allow
-    "tree *": allow
-    "find *": allow
-    "find * -exec*": deny                      # find would otherwise run anything
-    "find * -delete*": deny
+    "gh api repos/*": allow                    # milestones, review threads, repository metadata; the credential is the limit
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
+    "gh pr merge*": deny
+    "mise run *": allow                        # see the project run before designing for it
+    "mise install*": allow
     "npm ls*": allow
+    "pnpm ls*": allow
+    "pnpm why*": allow
+    "bun pm ls*": allow
     "pip list*": allow
+    "uv tree*": allow
+    "uv pip list*": allow
     "go list *": allow
-  webfetch:                                    # curated hosts, also in os.network.allow
-    "domain:docs.github.com": allow
-    "domain:developer.mozilla.org": allow
-    "domain:datatracker.ietf.org": allow
-    "domain:owasp.org": allow
-    "domain:mermaid.js.org": allow
-  websearch: allow                             # the only breed with open web search: option comparison needs current facts
+    "go mod graph*": allow
+    "cargo tree*": allow
+    "cargo metadata*": allow
 
 limits:
-  max_turns: 60
+  max_turns: 512  # per user turn; was 60
 
 lifecycle:
   hello: "Hi! My name is {nick}. I design and document architecture. What are we building?"
 
 privileges:
-  may_spawn: [developer, reviewer, tester]
+  may_spawn: [developer, reviewer, tester, devops, tech-writer]
   chat:
-    op: false                   # gets +o only as the lead of a formation (/spawn --op)
+    op: false                   # v1 leftover, ignored by flokpit v2
+
+commands: [honk, fly]           # fly the breeds in may_spawn when working alone; in a flock the formation's lead_commands apply
 
 roosts:
   - name: issue-labeled
@@ -122,7 +134,7 @@ roosts:
     cooldown: 10m
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:write", "checks:read", "actions:read"]
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:write", "checks:read", "actions:read"]
 
 handoff:
   done: ADRs and architecture docs in a PR, plus one issue per work item, posted with intent DONE.

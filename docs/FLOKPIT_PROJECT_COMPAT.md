@@ -53,9 +53,12 @@ Rules that follow:
   version lookup beyond its metadata host, and two agents of a flock get the
   same tools.
 - **Downloads go through the egress proxy.** Allowed are GitHub releases
-  (`github.com` and its asset hosts), `nodejs.org`, `registry.npmjs.org`,
-  `pypi.org`/`files.pythonhosted.org` and mise's metadata host
-  `mise-versions.jdx.dev`. Tools from other hosts fail to install; prefer
+  (`github.com` and its asset hosts), `nodejs.org`, the npm and JSR
+  registries, `pypi.org`/`files.pythonhosted.org`, crates.io, the Go module
+  proxy, RubyGems and mise's metadata host `mise-versions.jdx.dev` (flokpit
+  adds these to every agent), plus the documentation hosts and font and
+  script CDNs of `breeds/_base.yaml`. Tools from other hosts (Maven Central,
+  a private registry) fail to install; prefer
   core tools (`bun`, `node`, `python`, `go`, `rust`), the `npm:` backend and
   `aqua:`/`ubi:` tools released on GitHub.
 - **Browsers are the exception.** Chromium cannot be installed by a project
@@ -107,32 +110,41 @@ Minimum per breed:
 | developer | `test`, `check` (and whatever `check` depends on) | the test and lint commands in AGENTS.md / CLAUDE.md |
 | reviewer | `test-suite` (or `check`) | the test commands in AGENTS.md / CLAUDE.md |
 | tester | `start` (or `dev-server`), `e2e`, `ui-test`, `ui-test:stop`; `test` to run the suite it inherits | the start command in AGENTS.md / CLAUDE.md, `npx playwright test`, `agent-browser` directly |
-| architect, planner, project-manager | none (they read code and work on GitHub) | - |
+| devops | `check` (and writes the tasks when they are missing) | the build and test commands of the manifest and the CI workflow |
+| tech-writer | whatever the documented examples run; a docs build task when the project has one | the commands in the documents themselves |
+| pr-checker, issue-checker | `test-suite`, `check` or `test`; `smoke` | the test commands in AGENTS.md / CLAUDE.md / README / manifest |
+| security-auditor | `start` to prove a finding locally (optional) | the start command in AGENTS.md / CLAUDE.md |
+| release-manager | `check`, and the build or package step | the release notes in RELEASING / CONTRIBUTING |
+| architect, planner, project-manager, consultant | none (they read code and work on GitHub; the architect may run `check`) | - |
 
-A project that has no browser UI needs no `start`, `e2e` or `ui-test`; the
-tester then posts `BLOCKED` with that reason, and formations with a tester
-(`ui-bugfixing`, the optional tester of `feature-team` and `product-discovery`)
-are not the right choice for it.
+A project that is not there yet (no mise configuration, no tests, no
+AGENTS.md) can still be worked on: every breed falls back to the project's
+documents, manifest and CI workflow. The `project-setup` formation, or a
+single `devops` agent, adds the contract.
+
+A project that has no browser UI needs no `e2e` or `ui-test`: the tester then
+tests the API or the CLI end to end with the project's own test framework
+and skips the browser and accessibility parts. `ui-bugfixing` needs a UI.
 
 ## 3. Places: what the breeds read and write
 
-The breeds' edit rules are path patterns under `/workspace/repo`; a project
-that keeps these paths can be worked on by every breed without widening a rule.
+These are the default places. The edit rules allow the whole checkout, and
+every breed is told to use the project's own counterpart where one exists
+(`doc/adr/`, `e2e/`, `specs/`), so a project with another layout works too;
+the defaults apply where the project has no place yet.
 
 | Path | Who | Why |
 |---|---|---|
 | `AGENTS.md` (or `CLAUDE.md`) | every breed reads it | the fallback when there is no mise configuration, and the place for conventions (test layout, commit rules); flokpit passes it to the agent with its first turn, at most 16 KB |
 | `PROGRESS.md` | developer, tester write; feature-team's `progress_file` | what is done and what is next, kept up to date by the agents |
-| `tests/e2e/`, `playwright.config.*` | tester (its only writable paths in the checkout) | one failing end-to-end test per confirmed bug |
-| `docs/adr/`, `docs/architecture/` | architect (its only writable paths) | ADRs and architecture notes, Mermaid in markdown |
+| `tests/e2e/`, `playwright.config.*` | tester | one failing end-to-end test per confirmed bug |
+| `docs/adr/`, `docs/architecture/` | architect | ADRs and architecture notes, Mermaid in markdown |
 | `docs/discovery/` | product-discovery's `progress_file` (`docs/discovery/<flock>.md`) | the discovery record |
 | `docs/decisions/` | flokpit's shipped consultant breed | decision memos |
 | GitHub issues and labels | planner, project-manager, bug-sweep (`flock:<flock>` label) | the backlog; the project must allow issues |
 | the default branch | humans only | agents push `flokpit/<nick>` branches and open PRs; a formation's `integration_branch` (`ui-bugfixing/<date>`) is created by a developer and merged into by developers |
 
-Directories must exist in git (a `README.md` inside is enough) when a breed
-has to write into them: the tester's and architect's edit rules allow files
-under those paths, not the creation of unrelated ones.
+A breed creates a default directory when it is missing.
 
 ## 4. Checklist
 

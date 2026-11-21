@@ -104,7 +104,8 @@ keep a diverging copy of them (see X-2).
 | `limits` | `max_turns`, `max_budget_usd`, `summary_budget_usd`, `tighten_only` | same names |
 | `lifecycle` | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` | same names (top-level) |
 | `tools` | category → pattern → `allow`/`deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents` | `tools.allow`, `tools.deny` (Claude rule strings) |
-| `privileges` | `may_spawn`, `chat.mode`, `chat.op` | `may_spawn` |
+| `privileges` | `may_spawn`, `chat.mode`, `chat.op` (ignored by flokpit v2) | `may_spawn` |
+| `commands` | `fly`, `land`, `kick`, `rename`, `set`, `trigger`, `meta`, `honk` (flokpit v2 grants; replaces `chat.op`) | `fly` needs `may_spawn` |
 | `workspace` | `clone`, `branch_prefix` | `workspace.clone`, `workspace.branch_prefix` |
 | `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch`; `contents:write-integration-branch` lets a developer push to the flock's `integration_branch`, never the default branch | – (gateway decides today) |
 | `handoff` | `done`, `next` | – |
@@ -114,7 +115,7 @@ Merge rule: maps merge recursively, lists and scalars replace. A breed's
 
 ### 4.2 Formation (`kind: Formation`)
 
-Sections: `lead {breed, op, overrides}`, `members[] {breed, count {min, max},
+Sections: `lead {breed, op, overrides}`, `lead_commands`, `member_commands` (v2 grants; `op` is ignored by v2), `members[] {breed, count {min, max},
 start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 `handoffs`, `state`, `verification`, `termination {conditions, summary}`,
 `limits {max_agents, max_lifetime, max_budget_usd, turn_budget}`, `channel`,
@@ -196,7 +197,7 @@ The breed states permissions per category; Claude Code wants rule strings.
 | `read` | absolute path glob `/tmp/**` | `Read(//tmp/**)` (Claude needs `//` for absolute paths) |
 | `edit` | absolute path glob `/workspace/**` | `Edit(//workspace/**)`, plus `Write` once any edit is allowed |
 | `bash` | command pattern `git *` | `Bash(git *)` |
-| `webfetch` | `allow`/`deny` or domain pattern | `WebFetch` / `WebFetch(domain:<d>)` |
+| `webfetch` | `allow`/`deny` or a bare host name as the pattern (`"*"` = every host the egress proxy lets through) | `WebFetch` / `WebFetch(domain:<d>)` |
 | `websearch` | `allow`/`deny` | `WebSearch` |
 | `mcp` | `flokpit/*` | `mcp__flokpit__*` (server/tool → `mcp__server__tool`) |
 | `subagents` | `allow`/`deny` | `Agent` (Task) |
@@ -290,6 +291,23 @@ design. Delivery path:
   them `gh pr checks`, `gh run view` and issue reads fail with 403 on private
   repositories. The gateway grants them read-only. `contents:write-own-branch`
   stays limited to the agent's own branch.
+- Scopes the breeds request beyond the first set, each to be granted by the
+  gateway with exactly this reach: `issues:write` (create, edit, label,
+  comment; no delete), `workflows:write` (push changes under
+  `.github/workflows` on the agent's own or the integration branch; developer
+  and devops), `actions:write` (rerun and dispatch workflow runs),
+  `security_events:read` (Dependabot and code scanning alerts),
+  `security_advisories:write` (draft repository security advisories; the
+  security-auditor on public repositories), `releases:write-draft` (create
+  and edit draft releases, which create no tag; the release-manager),
+  `contents:write-integration-branch` now also for architect, tester,
+  tech-writer, devops and release-manager. A scope the gateway does not know
+  MUST be refused, not widened; the breed then posts BLOCKED at that step.
+- Tool rules follow "functionality over security" since 2026-11-21
+  (`docs/USECASES.md` section 9): breeds that run project code allow every
+  shell command, so requirement X-5 carries the whole weight: pod, proxy and
+  gateway credentials are the boundary, the rules only keep a cooperative
+  agent away from pushes to the default branch, merges, tags and deletes.
 - Breeds that review must act under a different GitHub identity than the
   breeds whose work they review (F-8); otherwise GitHub refuses the approval.
 - `workspace.clone: false` means no checkout; agentd starts in an empty

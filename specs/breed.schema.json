@@ -77,6 +77,22 @@
     "privileges": {
       "$ref": "#/$defs/privileges"
     },
+    "commands": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "fly",
+          "land",
+          "kick",
+          "rename",
+          "set",
+          "trigger",
+          "meta",
+          "honk"
+        ]
+      }
+    },
     "roosts": {
       "$ref": "#/$defs/roosts"
     },

@@ -1,0 +1,137 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: project-setup
+description: Makes a repository workable for agents and humans, a new one or an existing one; an architect decides the layout, a devops agent adds the mise contract and the pipeline, developers add the skeleton and the first tests, a tech-writer writes AGENTS.md and the README, a reviewer verifies on a clean checkout.
+status: proposal
+shape: bootstrap
+
+integration_branch: "setup/{flock}"   # the pieces depend on each other (tasks, pipeline, tests, documents), so they meet on one branch
+
+lead:
+  breed: architect
+
+lead_commands: [fly, land, kick, honk]   # flokpit v2 grants for the lead: fly its members, land and kick them, land the flock
+member_commands: [honk]
+
+members:
+  - breed: devops
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: developer
+    count: { min: 0, max: 2 }
+    start: on_demand            # skeleton, first tests, test setup for a project without one
+  - breed: tester
+    count: { min: 0, max: 1 }
+    start: on_demand            # only for a project with a UI: the e2e setup and the ui-test tasks
+  - breed: tech-writer
+    count: { min: 0, max: 1 }
+    start: on_demand            # AGENTS.md, README, contributor notes
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled member
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
+
+spawn_tree:
+  architect: [developer, reviewer, tester, devops, tech-writer]
+  watchdog: [consultant, developer, reviewer, tester, devops, tech-writer]
+  resumer: [developer, reviewer, tester, devops, tech-writer, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
+
+work_split: |
+  Take stock first: what the repository has (stack, package manager, tests,
+  pipeline, documents) and what docs/FLOKPIT_PROJECT_COMPAT.md of
+  flokpit/formations asks for. An empty repository needs the stack decided
+  first: from the task or a spec, otherwise ask the humans; record it as an
+  ADR. Then, each as its own pull request against {integration_branch}:
+  1. devops: mise.toml with pinned tools and the tasks the project can
+     serve (`test`, `check`; with a UI also `start`, `e2e`, `test-suite`,
+     `ui-test`, `ui-test:stop`), wrapping the commands that exist; the CI
+     workflow that runs `mise run check`; .gitignore.
+  2. developer: for an empty repository the skeleton with one real test;
+     for a project without tests the test setup and a first test of the
+     most important path; nothing else changes behaviour.
+  3. tester (with a UI): the Playwright setup pinned to the browser image's
+     release and one smoke test under tests/e2e/.
+  4. tech-writer: AGENTS.md (setup, tasks, layout, conventions) and the
+     README section on how to run and test; the directories breeds write to
+     (docs/adr/, docs/decisions/, docs/specs/, tests/e2e/) with a README.
+  5. reviewer: reviews each pull request and, at the end, proves the whole
+     on a clean checkout: `mise install` and `mise run check` in a fresh
+     worktree of {integration_branch}.
+  Existing behaviour, dependencies and structure stay as they are: this
+  flock adds the contract around a project, it does not rewrite it.
+
+handoffs:
+  architect:   { deliver: "inventory, the stack decision (ADR) and one issue per setup item with acceptance criteria", to: devops }
+  devops:      { deliver: "PR against the setup branch: mise.toml, tasks, CI workflow; green checks", to: reviewer }
+  developer:   { deliver: "PR against the setup branch: skeleton or test setup with a passing test", to: reviewer }
+  tester:      { deliver: "PR against the setup branch: e2e setup with one passing smoke test", to: reviewer }
+  tech-writer: { deliver: "PR against the setup branch: AGENTS.md and README, every command run", to: reviewer }
+  reviewer:    { deliver: "submitted PR reviews, and the clean-checkout proof of the setup branch", to: architect }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+  progress_file: PROGRESS.md
+
+verification:
+  required: [reviewer-approved, ci-green, clean-checkout-check-green]
+  optional: [ui-test-task-works]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - setup_verified            # mise install and mise run check pass on a clean checkout of the setup branch, CI is green
+    - human_stop
+    - no_progress_rounds: 3
+    - limits_reached
+  summary: What the project now provides (tools, tasks, pipeline, documents, tests) against the compatibility checklist, what it still lacks and why, the pull request from the setup branch to the default branch, and which formations fit the project now.
+
+limits:
+  max_agents: 12                # lead + devops + reviewer + 2 developers + tester + tech-writer + consultant + 2 pr-checkers + watchdog + resumer
+  max_lifetime: 6h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "project-setup: {repo}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - stack_or_tooling_decision
+  - merge_to_default_branch
+  - secret_or_repository_setting_needed   # CI secrets, branch protection, enabling issues: humans only
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Post the inventory (stack, how the project is run and tested today, what
+  of the compatibility checklist is missing) and the list of setup items.
+  For an empty repository, post the stack you propose with intent QUESTION
+  and wait. Ask the devops agent to create {integration_branch} from the
+  default branch and push it (you cannot). A repository without any commit
+  has no default branch and agents never push to one: ask a human for the
+  first commit (a README is enough) and wait for it.
+  Then file the issues and spawn the members the items need.

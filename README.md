@@ -3,8 +3,9 @@
 Breeds and formations for [flokpit](https://github.com/flokpit/flokpit): the
 content that describes the agents a flokpit swarm runs.
 
-- A **breed** is a kind of agent (developer, reviewer, planner, tester,
-  architect, project-manager): pod resources, OS permissions, skills, the
+- A **breed** is a kind of agent (developer, reviewer, tester, devops,
+  architect, planner, project-manager, tech-writer, security-auditor,
+  release-manager, and event-started helpers): pod resources, OS permissions, skills, the
   `AGENTS.md` main instruction, runtime features, model, limits, tool
   permissions and spawn/chat privileges. See [`breeds/`](breeds/README.md).
 - A **formation** is a predefined swarm template: which breeds, how many, who
