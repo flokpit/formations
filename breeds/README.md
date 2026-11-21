@@ -17,7 +17,7 @@ commit but not yet reviewed (`review: pending`), as required by
 | [ui-tester](ui-tester.yaml) | balanced | e2e tests, test reports | - |
 | [software-architect](software-architect.yaml) | frontier | ADRs, architecture docs | feature team |
 | [planner](planner.yaml) | frontier | issues, plans | bug sweep |
-| [project-manager](project-manager.yaml) | balanced | issues, specs, status reports | product discovery |
+| [project-manager](project-manager.yaml) | balanced | specs and progress files (docs only), issues, status reports | product discovery |
 
 ## Schema (`formations/v1alpha1`)
 
@@ -33,14 +33,25 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `pod` | 1. pod specification | `resources.requests`, `resources.limits` (Kubernetes quantities), `workspace_size` |
 | `os` | 2. OS-level permissions | `user`, `sudo`, `root_filesystem`, `writable_paths`, `tmp_size`, `network.egress` (`none`, `allowlist`), `network.allow` (domains) |
 | `skills` | 3. skills | list of `{source, ref, path, license, review}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit |
-| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` |
+| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{base}` (branch pull requests target: default branch, or the flock's integration branch), `{repo}` |
 | `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`) |
 | `model` | 6. model choice | `class` (`frontier`, `balanced`, `fast`), `effort`, `overridable`, `candidates` (ordered list of `{provider, id, effort?}`; see below) |
 | `limits` | 7. limits and budgets | `max_turns`, `max_budget_usd` (0 = no cap), `summary_budget_usd`, `tighten_only` |
 | `lifecycle` | 8. lifecycle | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` |
 | `tools` | 9. tool permissions | category → pattern → `allow` or `deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents`; `deny` wins over `allow`, and anything not allowed is denied (agents run without prompts); `{branch}` in a pattern is the agent's branch |
 | `privileges` | 10. spawn and chat | `may_spawn` (breed names), `chat.mode` (`voice` = `+v`), `chat.op` |
-| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway; what the breed must deliver when done |
+| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`_base` grants the read scopes `issues`, `pull_requests`, `checks`, `actions`; lists replace, so a breed repeats what it keeps); what the breed must deliver when done |
+
+## Permission design
+
+Breeds were checked against concrete use cases in
+[`docs/USECASES.md`](../docs/USECASES.md). The principle that came out of it:
+interpreter allows (`python3 *`, `npx *`, `make *`) are as wide as a shell, so
+the real boundaries are the pod, the egress allowlist and the gateway-held
+credentials. Allow generously what those already contain; keep hard `deny`
+rules for what a credential could do (default-branch pushes, merges, deletes).
+Lists replace in the merge, so a breed that sets `os.network.allow` or
+`credentials.github` repeats the base entries it still needs.
 
 `tighten_only: true` means a spawned agent's limits and tools can only be
 narrowed by `/spawn` arguments or a formation, never widened (flokpit already

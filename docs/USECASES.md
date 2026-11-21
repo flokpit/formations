@@ -1,0 +1,584 @@
+# Use cases and permission simulation
+
+Supporting document for `breeds/` and `formations/`. The breed `tools`,
+`os.network` and `credentials` sections were written from the top down (what
+should an agent be *allowed*); this document works from the bottom up: what
+does each breed actually *do*, command by command, and does the current
+configuration let it?
+
+Method: for every breed, realistic use cases are walked through step by step.
+Each step is checked against the merged breed (`_base` + breed file) using the
+semantics of `docs/CONCEPT.md` section 5.4: `deny` beats `allow`, anything not
+allowed is denied, there is no prompt (`--permission-mode dontAsk`). The
+formations are then walked as timelines, because most real blockers appear at
+the seams between agents.
+
+Status: **simulation on paper, nothing executed.** The decisions of section 5
+were applied to `breeds/`, `formations/`, `specs/` and `docs/CONCEPT.md` on
+2026-11-21. Sections 1 and 2 describe the configuration **before** that change
+(they are the evidence for it); section 3 is what was applied, with the
+deviations listed at its top; section 7 re-runs the timelines.
+
+Legend: ✅ works as configured · ⚠️ works with a caveat or depends on
+something unverified · ❌ blocked by the current configuration.
+
+## 0. Ground rules for the simulation
+
+### 0.1 What the permission rules really protect
+
+- `Bash(python3 *)`, `Bash(node *)`, `Bash(npx *)`, `Bash(make *)`,
+  `Bash(npm *)` and `Bash(find *)` (with `-exec`) are each equivalent to an
+  arbitrary shell. Deny rules like `curl *` or `kubectl *` are therefore a
+  second layer at best: `python3 -c "import urllib.request..."` does the same.
+- The real boundaries are the ones CONCEPT requirement X-5 already names: the
+  pod (non-root, read-only root filesystem, no `sudo`), the egress proxy
+  allowlist, and the gateway-held GitHub credentials (assumed: no token inside
+  the pod; to be confirmed).
+- Consequence for tuning: **be generous where the pod, proxy or credential
+  already contains the damage; keep hard denies where the credential is the
+  harm** (push to the default branch, merge, delete issues, force push to
+  someone else's branch). Today it is the other way round in places: wide
+  interpreter allows next to missing `git blame`.
+
+### 0.2 Assumptions to verify in the Claude Code spike
+
+These decide several results below. They belong in the same spike as S-6.
+
+| # | Question | Why it matters |
+|---|---|---|
+| V-1 | Which shell commands count as read-only and run under `dontAsk` without a rule (`ls`, `cat`, `head`, `wc`, `grep`, `pwd`, `cd`, `echo`, `sleep`)? CONCEPT 5.4 assumes the usual set. | Every breed uses them; `sleep` and `kill` may not be in the set. |
+| V-2 | Is each part of `cd x && npm test`, `a \| b`, `$(...)` and heredocs matched separately? | `gh issue create --body "$(cat <<EOF ...)"` is the normal way agents write issue bodies. If `cat` or the heredoc needs its own rule, every `gh ... create` breaks. |
+| V-3 | Can `gh api` be restricted by HTTP method in a rule? | It cannot, as far as the rule syntax shows. Plan: allow `gh api repos/*`, deny `-X DELETE`/`--method DELETE` forms, and let the credential be the real limit. |
+| V-4 | Do reviewer and developer push and review as the **same** GitHub identity? | GitHub refuses `gh pr review --approve` on one's own PR. If the gateway uses one app identity for all agents, approvals fail (see X-3). |
+
+### 0.3 Result summary
+
+| Breed | Covers its core use case today? | Main blockers |
+|---|---|---|
+| developer | mostly ✅ | cannot see CI, cannot read inline review comments, cannot force-push own branch after rebase, JS/Python only |
+| reviewer | ❌ | cannot install dependencies, cannot post inline comments, cannot read the linked issue, 3Gi memory (the developer breed documents 3Gi OOM on the same suite) |
+| ui-tester | ❌ | `curl` denied for health checks, `git add` too narrow to commit its own config, cannot read the issue or spec, blocked CDN and font hosts |
+| software-architect | ⚠️ | cannot edit `PROGRESS.md`, cannot read PRs or CI, cannot create the flock label, no docs access |
+| planner | ⚠️ as planner, ❌ as bug-sweep lead | cannot run anything, so cannot "reproduce or confirm" issues; no label creation; missing PR credential |
+| project-manager | ❌ for discovery | no checkout and no write access, yet its hand-off is "spec in a PR" and its progress file is in the repository |
+
+## 1. Breeds
+
+Use cases are what a human would plausibly ask for in the channel.
+
+### 1.1 developer
+
+Merged tools: `git *` (minus pushes to `main`/`master`, `--force*`), `gh pr
+create|view|comment`, `gh issue view|comment`, `npm|npx|pnpm|bun|node|python3|uv|make *`;
+edit under `/workspace/**` and `/tmp/**`; egress GitHub, npm, PyPI; credentials
+`contents:write-own-branch`, `pull_requests:write`, `issues:read`.
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| D-1 | Implement an issue with TDD: read the issue, write a failing test, implement, run tests, push, open PR | `gh issue view`, `npm ci` or `uv sync`, test runner, `git commit/push`, `gh pr create` | ✅ |
+| D-2 | Debug a bug, reproduce against a locally started service | start server, hit `localhost` | ⚠️ `curl *` is denied in `_base`; `python3 -c` works around it, which is exactly the kind of workaround a deny should not need (G-D1) |
+| D-3 | Address review feedback: read inline comments per file and line, fix, push | `gh api repos/*/pulls/*/comments`; `gh pr view --comments` does not list inline threads | ❌ no `gh api` (G-D2) |
+| D-4 | Rebase on a moved default branch and update the PR | `git fetch`, `git rebase`, `git push --force-with-lease origin {branch}` | ❌ `git push --force*` is denied and also matches `--force-with-lease` (G-D3) |
+| D-5 | CI is red after the push: read the failing job log, fix | `gh pr checks`, `gh run view --log-failed`; credentials `checks:read`, `actions:read` | ❌ neither command nor scope (G-D4); formations require `ci-green` but the author cannot see CI |
+| D-6 | Look up a library's documentation or an error message | `WebFetch` to docs hosts, egress to them | ❌ `webfetch: {}`, `websearch: deny`, no docs host allowed (G-D5) |
+| D-7 | Add a dependency | `npm i`, registry | ✅ |
+| D-8 | Work in a Go, Rust, Java or Ruby repository | toolchain on the image, module proxy in egress, `go`/`cargo`/`mvn`/`bundle` rules | ❌ features are Node and Python only; egress has no `proxy.golang.org`, `crates.io`, Maven Central (G-X5) |
+| D-9 | Integration tests that need Postgres or Redis | a service container or an in-process alternative | ❌ no sidecar mechanism; not a permission issue, but the same user-visible failure (G-X5) |
+| D-10 | Edit labels or the body of its own issue/PR, list open PRs for context | `gh pr edit`, `gh issue edit`, `gh pr list`, `gh issue list` | ❌ (G-D6) |
+| D-11 | Install a native module (node-gyp, prebuilt binary from a GitHub release) | egress `nodejs.org`, `objects.githubusercontent.com` | ❌ release assets redirect to `objects.githubusercontent.com`, not allowed (G-X4) |
+
+Also found (too loose, see section 4): `git push * main` does not match
+`git push origin HEAD:main`; only the `write-own-branch` credential stops it.
+
+### 1.2 reviewer
+
+Merged tools: `git fetch*|checkout*`, `gh pr view|diff|checks|review|comment`,
+`npm test*`, `npm run *`, `npx *`, `pnpm test*`, `bun test*`,
+`python3 -m pytest*`, `make test*`; edit only `/tmp/**`; credentials
+`contents:read`, `pull_requests:write`; memory limit 3Gi.
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| R-1 | Review a PR and run its tests in a fresh checkout | `npm ci` / `pnpm install` / `uv sync` before `npm test` | ❌ only `npm test*`, `npm run *` and `npx *` are allowed; there is no install, so tests cannot run on a clean clone (G-R1) |
+| R-2 | Post findings with file and line (the breed's own rule) | `gh api repos/*/pulls/N/reviews` with inline `comments[]`; `gh pr review` only takes a body | ❌ (G-R2) |
+| R-3 | Check the PR against its issue's acceptance criteria | `gh issue view`; credential `issues:read` | ❌ neither (G-R3); formation `acceptance-criteria-checked` cannot be backed |
+| R-4 | Prove a regression test fails without the fix | check out the PR, revert the fix, run, restore: `git stash`, `git worktree add`, `git switch` | ⚠️ `git checkout*` works for a path-limited revert; `git stash`/`worktree` do not (G-R4) |
+| R-5 | Differential and security review incl. dependency audit | `npm audit`, `pip-audit`, `git blame`, `git log -S` | ❌ `npm audit` not covered by `npm run *`; `git blame` missing from `_base` (G-R1, G-X3) |
+| R-6 | Reproduce a suspected bug with a scratch test | write a test file next to the code | ⚠️ `edit` only allows `/tmp/**`; tests outside the repo rarely resolve imports. Harmless to allow in the workspace because `git push` is denied and the credential is read-only (G-R5) |
+| R-7 | Approve or request changes | `gh pr review --approve` | ⚠️ works only if the reviewer is a different GitHub identity than the author (V-4, X-3) |
+| R-8 | Run the full suite of a large repo | same memory as the developer | ❌ 3Gi against a developer limit of 6Gi, set because 3Gi was OOMKilled by builds and test runs (G-R6) |
+| R-9 | Re-review after fixes | `git fetch`, `git diff old..new` | ✅ |
+
+### 1.3 ui-tester
+
+Merged tools: edit `tests/e2e/**`, `playwright.config.*`, `/tmp/**`; `git add
+tests/e2e*`, `git commit*`, `git push origin {branch}*`, `gh pr create|comment`,
+`npm|npx|pnpm|node|python3 *`, `playwright-cli *`, `agent-browser *`; egress
+GitHub, registries, `localhost`; memory limit 4Gi.
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| T-1 | Start the app and wait until it answers | background server, `curl -sf localhost:3000`, `sleep`, `kill` | ❌/⚠️ `curl *` denied (V-1 decides `sleep`/`kill`); `npx wait-on` is a workaround (G-T1) |
+| T-2 | Explore flows exploratorily with `playwright-cli` / `agent-browser` | browser binary, `localhost` | ✅ |
+| T-3 | Test a page that loads fonts, a CDN script or a payment sandbox | egress to those hosts, or request interception | ⚠️ blocked hosts surface as hangs or load errors that look like app bugs; Playwright route mocking works but is not what the skills assume (G-T2) |
+| T-4 | Write an e2e test plus add `@playwright/test` and a config | edit `package.json`, `package-lock.json`, `playwright.config.ts`, `.gitignore`; `git add` of the same | ❌ `git add` only allows `tests/e2e*`, so the config and the dependency change cannot be committed even though the config may be edited; `package.json` cannot be edited with the Edit tool (G-T3) |
+| T-5 | Run an accessibility audit (axe) on every page | `npx @axe-core/cli` or `@axe-core/playwright` | ✅ |
+| T-6 | Deliver a report with screenshots | commit images and a markdown report where humans can open them | ⚠️ default Playwright output is `test-results/`, outside what `git add` allows and ephemeral with the pod; the breed must name a committed path such as `tests/e2e/reports/{flock}/` (G-T4) |
+| T-7 | Read the acceptance criteria from the issue or the spec PR | `gh issue view`, `gh pr view`, `git fetch`, `git merge` | ❌ none of them (G-T5) |
+| T-8 | Test a staging or preview deployment | egress to that host | ❌ allowlist is static; no way for the spawner to add a host (G-X6) |
+| T-9 | Start a backend with seed data | `make *`, `uv *`, `docker compose` | ⚠️ `make` and `uv` are not allowed for this breed although `developer` has them; no Docker in the pod (G-T1) |
+| T-10 | Flake triage (`--repeat-each 20`) | `npx playwright test` | ✅ |
+| T-11 | Run Chromium plus a dev server plus a build | memory | ⚠️ 4Gi is tight; Chromium alone takes about 1Gi with a few tabs (G-T6) |
+
+### 1.4 software-architect
+
+Merged tools: edit `docs/adr/**`, `docs/architecture/**`, `/tmp/**`; `git add
+docs/*`, `git commit*`, `git push origin {branch}*`, `gh pr create|comment`,
+`gh issue create|view`, `tree *`, `find *`; credentials `contents:write-own-branch`,
+`pull_requests:write`, `issues:write`; may spawn developer, reviewer, ui-tester.
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| A-1 | Map an unfamiliar codebase | read, `rg`, `tree`, `find`, `git log`, dependency listing (`npm ls`, `go list -m all`, `pipdeptree`) | ⚠️ reading works; dependency commands are not allowed (G-A5) |
+| A-2 | Write an ADR with Mermaid diagrams, open a PR | edit under `docs/adr`, `git add docs/*`, commit, push, `gh pr create` | ✅ (Mermaid syntax cannot be checked without a renderer; accepted limitation) |
+| A-3 | STRIDE threat model of a new endpoint | edit `docs/architecture/**` | ✅ |
+| A-4 | Compare two libraries or a vendor API, cite docs | `WebFetch`/`WebSearch`, egress | ❌ (G-A4); the "at least two options with trade-offs" rule is hard to meet from training data alone |
+| A-5 | Lead a feature-team: file issues with the flock label | `gh label create`, `gh issue create --label`, `gh issue edit`, `gh issue close` | ❌ label creation, edit and close are missing (G-A1) |
+| A-6 | Lead: keep `PROGRESS.md` (the formation's record of state) | edit `/workspace/repo/PROGRESS.md`, `git add PROGRESS.md` | ❌ neither the edit path nor the `git add` path (G-A2) |
+| A-7 | Lead: check whether developer PRs are approved and green | `gh pr list`, `gh pr view --json reviews`, `gh pr checks` | ❌ only `gh pr create\|comment` (G-A3) |
+| A-8 | Review a developer PR for design conformity | `gh pr diff`, `gh pr view` | ❌ (G-A3) |
+| A-9 | Decide how work items land when they depend on each other | merge approved PRs into a flock integration branch | ❌ no merge right of any kind (G-X7) |
+
+`find *` is also an unintended `-exec` escape hatch (section 4).
+
+### 1.5 planner
+
+Merged tools: `gh issue *` (minus `delete`), `gh label list*`, `gh pr list|view*`,
+`/tmp/**` edit; base git read-only set; runtime `[]`; 1Gi memory; egress GitHub
+only; credentials `contents:read`, `issues:write` (no `pull_requests:read`).
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| P-1 | Turn a goal into issues with acceptance criteria | `gh issue create --body-file`, labels, milestone | ⚠️ works if the labels exist; `gh label create` is missing (G-P1); V-2 for inline bodies |
+| P-2 | Detect duplicates of existing issues and PRs | `gh issue list`, `gh search issues`, `gh pr list` | ⚠️ `gh search` missing; `gh pr list` allowed but credential has no `pull_requests:read`, so private repos return 403 (G-P2) |
+| P-3 | Triage a bug issue: reproduce or confirm it (bug-sweep `work_split`) | run the app or tests, install dependencies | ❌ nothing runnable: no `npm`/`python3`, no registry access, no workspace edit, 1Gi memory (G-P3) |
+| P-4 | Order issues by impact and file overlap | `git log --name-only`, `git blame`, `rg` | ⚠️ `git log` works, `git blame` and `git grep` missing (G-X3) |
+| P-5 | Lead bug-sweep: spawn, track PRs and CI, close issues after approval | `gh pr view --json`, `gh pr checks`, `gh issue close` | ⚠️ `gh pr checks` missing; no `checks:read` (G-P4) |
+| P-6 | Group issues into a milestone | `gh api repos/*/milestones` | ❌ (the project-manager has it, the planner does not) (G-P1) |
+| P-7 | Comment on an issue to hand over context | `gh issue comment` | ✅ |
+
+### 1.6 project-manager
+
+Merged tools: `gh issue *`, `gh pr list|view|checks*`, `gh api repos/*/milestones*`,
+`gh project *`, `/tmp/**` edit; **`workspace.clone: false`**; credentials
+`contents:read`, `issues:write`, `pull_requests:read`, `projects:write`.
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| M-1 | Write a spec as an issue | `gh issue create` | ✅ |
+| M-2 | Write a spec **as a PR** (product-discovery hand-off: "confirmed spec in a PR") | checkout, edit `docs/specs/**`, `git add/commit/push`, `gh pr create`, `contents:write-own-branch`, `pull_requests:write` | ❌ no clone, no edit path, no git write, no `gh pr create`, read-only contents credential (G-M1) |
+| M-3 | Keep `docs/discovery/{flock}.md` (formation `progress_file`) | same as M-2 | ❌ (G-M1) |
+| M-4 | Groom the backlog: labels, milestones, assignees, project board | `gh label create`, `gh issue edit`, `gh api milestones`, `gh project` | ⚠️ everything except `gh label create` (G-M2) |
+| M-5 | Status report: done, in progress, blocked, risks | `gh issue list --json`, `gh pr list --json`, `gh run list`, commit counts | ⚠️ issue and PR data works; CI runs and commits do not (no clone, no `gh run`) (G-M3) |
+| M-6 | Understand the repository before writing a spec | README, tree, recent PRs | ❌ no clone and no `gh repo view` / `gh api repos/*/contents` (G-M4) |
+| M-7 | Research market, users or competitors for a spec | `WebSearch`, `WebFetch` | ❌ (G-M5); optional, humans can answer |
+| M-8 | Lead discovery: spawn architect, ui-tester, planner | `flokpit/*` | ✅ |
+
+## 2. Formations
+
+Each formation is walked as a timeline for a concrete task. Rows show the first
+step that fails; later steps are only listed when they fail for a different
+reason.
+
+### 2.1 feature-team: "Add CSV export to the reports page (API plus UI)"
+
+Flock: architect (lead), two developers, reviewer, ui-tester.
+
+| Step | Actor | Action | Result |
+|---|---|---|---|
+| 1 | architect | kickoff `QUESTION` in the channel, wait | ✅ |
+| 2 | architect | ADR with options, PR | ✅ |
+| 3 | architect | create label `flock:csv-export`, file two issues with it | ❌ label does not exist and cannot be created (G-A1) |
+| 4 | architect | spawn two developers and the reviewer (`flokpit/*`) | ✅ |
+| 5 | architect | write the plan into `PROGRESS.md` on its branch | ❌ (G-A2) |
+| 6 | developer A, B | implement item A (API) and B (UI) in parallel | ✅ (D-1) |
+| 7 | developer B | item B calls the API of item A, which is an unmerged PR | ❌ the work split says "items must not depend on unmerged work", which only holds if item B can be written against a mock; real integration needs A's code (G-X7) |
+| 8 | developer | push, open PR | ✅ |
+| 9 | reviewer | check out PR, install dependencies, run tests | ❌ (R-1) |
+| 10 | reviewer | review against the issue, post inline findings | ❌ (R-2, R-3) |
+| 11 | developer | read inline comments, fix, rebase, force-push | ❌ (D-3, D-4) |
+| 12 | architect | decide `all_items_verified`: reviews approved and CI green | ❌ cannot read PR state or CI (A-7) |
+| 13 | ui-tester | spawned after the PRs are approved to test the whole feature | ❌ its branch comes from the default branch, so neither the API nor the UI is in the checkout; no `git fetch/merge`; no issue read (T-7, G-X7) |
+| 14 | reviewer | approve | ⚠️ identity (V-4) |
+| 15 | human | merge each PR | by design; but the ui-tester in step 13 needed that merge first |
+
+The shape is right, the plumbing between agents is missing. Steps 7 and 13 are
+structural, not a missing glob: members need to see each other's approved,
+unmerged work. See G-X7.
+
+### 2.2 bug-sweep: "Fix the 12 open issues labelled `bug`"
+
+Flock: planner (lead), up to five developers, one reviewer.
+
+| Step | Actor | Action | Result |
+|---|---|---|---|
+| 1 | planner | list issues, confirm or reproduce each one | ❌ cannot run anything (P-3); only static confirmation by reading code is possible |
+| 2 | planner | label and order, drop duplicates | ⚠️ (P-1, P-2) |
+| 3 | planner | spawn reviewer and first developers | ✅ |
+| 4 | developer | reproduce, write failing regression test, fix, PR | ✅ (D-1) |
+| 5 | developer | two issues touch the same files: second PR on top of the first | ✅ stacked PR via `gh pr create --base <first branch>` is covered by `git *` and `gh pr create*` |
+| 6 | reviewer | verify the regression test failed before the fix | ⚠️ (R-4) |
+| 7 | reviewer | tests, inline comments, approve | ❌ (R-1, R-2, V-4) |
+| 8 | planner | see CI and review state, assign the next issue | ⚠️ `gh pr view` works, `gh pr checks` does not (P-5) |
+| 9 | developer | turn limit | ⚠️ `max_turns` 40 per human message is tight for fix, CI fix and one review round; it is lower than the breed's 60 on purpose, keep but watch |
+| 10 | human | merge approved PRs | by design |
+
+Of the three formations this one is closest to working: after the reviewer
+fixes, only the planner's reproduction step needs a decision. Recommendation:
+move reproduction to the developer (the regression test already proves it)
+and let the planner confirm statically. That keeps the planner read-only,
+which is the better trade than giving it a toolchain.
+
+### 2.3 product-discovery: "Idea: a shared shopping list for a household"
+
+Flock: project-manager (lead), software-architect, ui-tester, planner. Fresh,
+nearly empty repository.
+
+| Step | Actor | Action | Result |
+|---|---|---|---|
+| 1 | PM | restate the idea, ask `QUESTION` | ✅ |
+| 2 | PM | read the repository for context | ❌ no checkout and no `gh repo view` (M-6) |
+| 3 | PM | write the spec, put it in a PR | ❌ (M-2) |
+| 4 | PM | keep `docs/discovery/{flock}.md` | ❌ (M-3) |
+| 5 | human | confirm the spec | ✅ by design |
+| 6 | architect | sketch architecture, ADRs for options, PR | ✅; ❌ for the spec itself, which is in an unmerged PR (G-X7) unless the human merged it first |
+| 7 | ui-tester | turn acceptance criteria into failing e2e tests in a repo that has no app, no `package.json`, no Playwright | ❌/⚠️ it needs the spec (T-7), `npm init`/`npm i -D @playwright/test` works but cannot be committed (T-4); tests must fail for the right reason ("no app yet" is the wrong reason; the breed says "post BLOCKED if the app does not start") |
+| 8 | planner | file backlog issues with the flock label | ⚠️ label (P-1) |
+| 9 | PM | link spec, ADRs, tests, issues; post summary | ⚠️ cannot read PR state (M-5) |
+
+Discovery is the formation with the least dependence on code execution and the
+most dependence on one agent handing a document to the next. Most of its
+problems are the project-manager breed being configured as read-only while its
+hand-off requires a write (M-1, M-2). Decision for the ui-tester on a
+greenfield: it needs a "scaffold mode" (allowed to create `package.json` and
+the Playwright config) or the formation must say tests are written against the
+spec only and are expected to fail at "no server on `localhost`".
+
+## 3. Proposed changes
+
+Applied, with these deviations from the drafts below: the lead integrates
+through a flokpit tool and not `gh pr merge` (3.8, G-X7); the developer keeps
+`issues:read` and has no `gh issue edit*`; `wget *` is allowed next to `curl *`
+for developer; bug-sweep has no integration branch (independent fixes stay
+revertable one by one); the project-manager's `projects:write` and
+`contents:write-own-branch` are as in 3.7. Gap ids used in the tables above point here by prefix: `G-D` to
+3.2, `G-R` to 3.3, `G-T` to 3.4, `G-A` to 3.5, `G-P` to 3.6, `G-M` to 3.7,
+`G-X3`/`G-X4` to 3.1, `G-X5` to `G-X7` to 3.8. `X-3` is the identity item
+(3.8, also V-4). Q-ids are the open decisions in section 5.
+
+### 3.1 `_base.yaml`
+
+```yaml
+os:
+  network:
+    allow:                       # replaces the list; breeds that override it must repeat these
+      - github.com
+      - api.github.com
+      - codeload.github.com
+      - raw.githubusercontent.com
+      - objects.githubusercontent.com   # GitHub release assets redirect here
+
+tools:
+  bash:
+    # read-only git that every breed needs (V-1 decides what is covered already)
+    "git blame*": allow
+    "git grep*": allow
+    "git ls-files*": allow
+    "git rev-parse*": allow
+    "git merge-base*": allow
+    "git cat-file*": allow
+    "git rev-list*": allow
+    "git branch*": allow
+    "git fetch*": allow
+    # read-only GitHub for orientation and status
+    "gh repo view*": allow
+    "gh search *": allow
+    "gh issue view*": allow
+    "gh issue list*": allow
+    "gh pr view*": allow
+    "gh pr list*": allow
+    "gh pr diff*": allow
+    "gh pr checks*": allow
+    "gh run list*": allow
+    "gh run view*": allow
+    "gh label list*": allow
+```
+
+`credentials.github` default becomes `["contents:read", "issues:read",
+"pull_requests:read", "checks:read", "actions:read"]` so the read-only
+commands above work for every breed; breeds add write scopes on top (lists
+replace, so each breed repeats the full list).
+
+### 3.2 developer
+
+```yaml
+tools:
+  bash:
+    "git push --force *": deny           # replaces "git push --force*", which also matched --force-with-lease
+    "git push -f *": deny
+    "git push --force-with-lease origin {branch}": allow
+    "gh pr edit*": allow
+    "gh issue edit*": allow
+    "gh api repos/*/pulls/*": allow      # inline review comments; V-3
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
+    "curl *": allow                      # replaces the _base deny; egress proxy is the boundary
+    "pytest*": allow
+    "ruff *": allow
+    "pip *": allow
+  webfetch:
+    "domain:developer.mozilla.org": allow   # curated docs hosts, also added to os.network.allow
+    "domain:docs.python.org": allow
+    "domain:nodejs.org": allow
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:write",
+           "checks:read", "actions:read"]
+```
+
+`issues:write` only if developers should edit labels (D-10); otherwise keep
+`issues:read` and drop `gh issue edit*`.
+
+### 3.3 reviewer
+
+```yaml
+pod:
+  resources:
+    limits: { cpu: "2", memory: 6Gi, ephemeral-storage: 8Gi }   # same as developer
+tools:
+  bash:
+    "gh pr checkout*": allow
+    "gh api repos/*/pulls/*": allow      # inline review with comments[] (R-2)
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
+    "npm ci*": allow
+    "npm audit*": allow
+    "npm ls*": allow
+    "pnpm install*": allow
+    "pnpm audit*": allow
+    "bun install*": allow
+    "uv sync*": allow
+    "uv run *": allow
+    "python3 -m pip *": allow
+    "git stash*": allow
+    "git switch*": allow
+    "git worktree *": allow
+    "git blame*": allow
+  edit:
+    "/workspace/**": allow               # scratch repro; harmless: push denied, credential read-only (R-6)
+credentials:
+  github: ["contents:read", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
+```
+
+If R-6 is rejected as too lax for a breed whose rule is "never edits code",
+keep `/tmp/**` and accept ⚠️.
+
+### 3.4 ui-tester
+
+```yaml
+pod:
+  resources:
+    limits: { cpu: "2", memory: 6Gi, ephemeral-storage: 8Gi }
+os:
+  network:
+    allow: [github.com, api.github.com, codeload.github.com, raw.githubusercontent.com,
+            objects.githubusercontent.com, registry.npmjs.org, pypi.org,
+            files.pythonhosted.org, localhost]   # plus an optional per-spawn host, see G-X6
+tools:
+  edit:
+    "/workspace/repo/tests/e2e/**": allow
+    "/workspace/repo/playwright.config.*": allow
+    "/workspace/repo/package.json": allow
+    "/workspace/repo/.gitignore": allow
+    "/tmp/**": allow
+  bash:
+    "git add *": allow                    # replaces "git add tests/e2e*"
+    "git add -A*": deny
+    "git add .": deny
+    "git fetch*": allow
+    "git merge *": allow                  # to bring in an approved branch for testing (G-X7)
+    "curl *": allow
+    "sleep *": allow
+    "kill *": allow
+    "make *": allow
+    "uv *": allow
+    "gh issue view*": allow
+    "gh pr view*": allow
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
+```
+
+The report path goes into the instructions: commit screenshots and the report
+under `tests/e2e/reports/{flock}/` and link them in the PR, because the pod's
+`test-results/` disappears with the pod.
+
+### 3.5 software-architect
+
+```yaml
+tools:
+  edit:
+    "/workspace/repo/docs/adr/**": allow
+    "/workspace/repo/docs/architecture/**": allow
+    "/workspace/repo/PROGRESS.md": allow           # lead's progress_file
+    "/tmp/**": allow
+  bash:
+    "git add PROGRESS.md": allow
+    "gh label create*": allow
+    "gh issue edit*": allow
+    "gh issue close*": allow
+    "gh issue comment*": allow
+    "gh pr view*": allow
+    "gh pr list*": allow
+    "gh pr diff*": allow
+    "gh pr checks*": allow
+    "find * -exec*": deny                          # find * currently doubles as arbitrary exec
+    "find * -delete*": deny
+    "npm ls*": allow
+    "pip list*": allow
+    "go list *": allow
+  webfetch:
+    "domain:docs.github.com": allow                # curated; extend per project
+credentials:
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:write", "checks:read"]
+```
+
+Websearch: allow it for the architect only if option comparison with current
+facts is wanted; it widens prompt-injection exposure, so it is a human
+decision (Q-1 in section 5).
+
+### 3.6 planner
+
+```yaml
+tools:
+  bash:
+    "gh label create*": allow
+    "gh api repos/*/milestones*": allow
+    "gh issue transfer*": deny                    # `gh issue *` also allowed moving issues to other repos
+    "gh issue pin*": deny
+credentials:
+  github: ["contents:read", "issues:write", "pull_requests:read", "checks:read"]
+```
+
+Plus a change in `formations/bug-sweep.yaml`: `work_split` says developers
+reproduce and write the regression test first; the planner confirms
+statically (reading code and issue text) and escalates what it cannot judge.
+
+### 3.7 project-manager
+
+Option A (recommended): the PM may write documents, not code.
+
+```yaml
+workspace:
+  clone: true                                      # needed for specs and progress file
+tools:
+  edit:
+    "/workspace/repo/docs/specs/**": allow
+    "/workspace/repo/docs/discovery/**": allow
+    "/tmp/**": allow
+  bash:
+    "git add docs/*": allow
+    "git commit*": allow
+    "git push origin {branch}*": allow
+    "gh pr create*": allow
+    "gh pr comment*": allow
+    "gh label create*": allow
+    "gh run list*": allow
+    "gh repo view*": allow
+    "gh api repos/*/contents/*": allow
+credentials:
+  github: ["contents:write-own-branch", "issues:write", "pull_requests:write", "projects:write"]
+```
+
+Option B: keep `clone: false` and change the hand-off to "spec as an issue"
+(the `to-spec` skill already works that way) plus `progress_file` as an
+issue or the channel topic. Smaller, but discovery then has no spec file for
+the ui-tester and architect to read in the repository.
+
+### 3.8 Structural items (need a decision, not a glob)
+
+| ID | Item | Proposal |
+|---|---|---|
+| G-X7 | Members cannot see each other's approved, unmerged work; the lead cannot sequence dependent items; the ui-tester cannot test a feature that is only in PRs. | One **flock integration branch** `flokpit/{flock}/integration` (`state.integration_branch`). flokpit creates it and points members' clones and `{base}` at it. The lead integrates a PR through a flokpit MCP tool (proposed `flock_integrate`) that checks base branch, approval by another agent and green checks server-side; `gh pr merge*` stays denied in every breed, so CONCEPT F-5 holds by tool permissions. The lead opens one PR from the integration branch to the default branch; a human merges it. Requirements F-8, SC-17 in CONCEPT. Used by feature-team and product-discovery. |
+| G-X5 | Per-stack toolchains (Go, Rust, Java, Ruby) need runtime features, egress hosts and command rules together. | A `stack` profile chosen at spawn that bundles `runtime.features`, `os.network.allow` additions and `bash` rules; profiles live in the repository like breeds. Out of scope for this change; until then developer is Node and Python only. |
+| X-3 / V-4 | Approving needs a different identity than the author. | Gateway issues per-breed GitHub identities, or the reviewer posts `gh pr review --comment` with an explicit verdict line and the formation reads that. |
+| G-X4 | Egress hosts for GitHub release downloads. | `objects.githubusercontent.com` in `_base` (3.1). |
+| G-X5 | Services for tests (Postgres, Redis). | Sidecar containers per breed (`pod.services`); not a permission issue but the same user-visible failure. Not proposed here. |
+| G-X6 | UI testing against a preview or staging URL. | A spawn argument `--allow-host <h>` that a **human** supplies, not an agent; it widens egress, so it is the one place where `tighten_only` is deliberately not applied, and it needs a flokpit decision. |
+
+## 4. Too loose (the other direction)
+
+Found while simulating; small, but they belong next to the loosening because
+they change what is safe to loosen.
+
+| Where | Issue | Fix |
+|---|---|---|
+| `_base` `read: "**": allow` | Includes `/proc/*/environ`, `/var/run/secrets/**` (service account token) and gh/ssh config | Applied: `deny` for `/proc/**`, `/var/run/secrets/**`, `/run/secrets/**`, `/home/agent/.ssh/**`, `/home/agent/.config/gh/**`. `~/.claude/**` stays readable because skills read their own files there. The real fix is not mounting secrets (OS layer) |
+| developer `git push * main` | Does not match `git push origin HEAD:main` or `git push origin HEAD:refs/heads/main`; relies on the credential | Add `git push * HEAD:main*`, `git push * HEAD:master*`, `git push *:main`; keep the credential as the backstop |
+| developer `git *` | Also allows `git config`, `git remote add/set-url`, `git clean -fdx` | Acceptable in an isolated pod; deny `git remote *` to keep the push target fixed |
+| architect `find *` | `find . -exec ...` runs anything | deny `-exec` and `-delete` (3.5) |
+| planner `gh issue *` | Includes `transfer`, `pin`, `lock`, `develop` | Enumerate: `create`, `edit`, `comment`, `list`, `view`, `close`, `reopen` |
+| `gh api` | Any method on any path once allowed (V-3) | Allow `repos/*/...` only, deny delete forms, depend on the credential |
+
+## 5. Decisions for the humans
+
+**Decided 2026-11-21: all six recommendations accepted** (Q-1 WebFetch on curated hosts for developer and architect, WebSearch for the architect only; Q-2 option A; Q-3 integration branch; Q-4 yes; Q-5 developer reproduces; Q-6 distinct identities). Sections 3.2 to 3.8 are the agreed target; they are not yet applied to `breeds/`.
+
+| # | Decision | Recommendation |
+|---|---|---|
+| Q-1 | Allow `WebSearch` for the architect (and `WebFetch` on curated docs hosts for developer and architect)? | `WebFetch` on a curated list yes; `WebSearch` only for the architect, because reading arbitrary pages is the main prompt-injection path. |
+| Q-2 | Project-manager Option A (writes docs) or Option B (issues only)? | A: the formation's own hand-off requires a PR. |
+| Q-3 | Flock integration branch (G-X7) or independent-items-only for now? | Integration branch; without it feature-team cannot finish a dependent item without a human in the loop at every step. |
+| Q-4 | Reviewer may edit the workspace for scratch repro? | Yes; the credential is read-only and push is denied. |
+| Q-5 | Who reproduces bugs in bug-sweep? | The developer; the planner stays read-only. |
+| Q-6 | Distinct GitHub identities per breed (X-3)? | Yes; otherwise `reviewer-approved` cannot be a GitHub fact. |
+
+## 6. After applying
+
+1. Apply 3.1 to 3.7 to `breeds/`, run `uv run scripts/validate.py`, keep
+   `breeds/README.md` (table of tools and credentials) and `docs/CONCEPT.md`
+   (sections 5.4 and 5.8) in sync.
+2. Re-run each timeline in section 2 against the merged breeds; every ❌ and ⚠️
+   that remains needs a named owner.
+3. In the flokpit spike (V-1 to V-4), record the results here and replace this
+   document's "simulation on paper" status line.
+
+## 7. Re-run after applying
+
+The timelines of section 2 against the merged breeds as they are now.
+
+| Item | Before | Now | What still stands |
+|---|---|---|---|
+| D-2, D-3, D-4, D-5, D-6, D-10, D-11 | ❌/⚠️ | ✅ | D-10 only for PRs (`gh pr edit`); issue labels are the lead's job |
+| D-8 Go, Rust, Java, Ruby | ❌ | ❌ | needs the stack profile (G-X5): runtime features, egress hosts and rules together |
+| D-9 test services (Postgres, Redis) | ❌ | ❌ | needs sidecars; not a permission |
+| R-1 to R-6, R-8, R-9 | ❌/⚠️ | ✅ | reviewer memory is 6Gi |
+| R-7 approve | ⚠️ | ⚠️ | needs distinct identities (F-9, gateway) |
+| T-1, T-4, T-5, T-6, T-7, T-9, T-11 | ❌/⚠️ | ✅ | |
+| T-3 external fonts and CDNs | ⚠️ | ⚠️ | still blocked by egress; tests must mock them |
+| T-8 staging or preview URL | ❌ | ❌ | needs a human-supplied `--allow-host` (G-X6), a flokpit decision |
+| A-1 to A-3, A-5 to A-9 | ❌/⚠️ | ✅ | A-9 needs the integrate tool (F-8); Mermaid syntax still unchecked |
+| A-4 compare libraries | ❌ | ✅ | WebSearch is on for this breed only |
+| P-1, P-2, P-4 to P-7 | ⚠️/❌ | ✅ | |
+| P-3 reproduce an issue | ❌ | by design | moved to the developer (bug-sweep `work_split`) |
+| M-1 to M-6, M-8 | ❌/⚠️ | ✅ | M-2/M-3 write only under `docs/specs/**` and `docs/discovery/**` |
+| M-7 market research | ❌ | ❌ | no web access for the project-manager; humans answer |
+| feature-team steps 7, 13 | ❌ | ✅ | with the integrate tool and integration branch (flokpit work) |
+| feature-team steps 9 to 12 | ❌ | ✅ | |
+| bug-sweep steps 1, 6 to 8 | ❌/⚠️ | ✅ | step 7 approve needs F-9 |
+| product-discovery steps 2 to 4, 6, 7 | ❌ | ✅ | the ui-tester on a greenfield repo may add `package.json` and the Playwright config; "fails for the right reason" is still a prompt-level judgement |
+
+**Depends on flokpit, not on this repository:** the integrate tool and
+integration branch (F-8), distinct identities (F-9), the new read scopes in
+the gateway (CONCEPT 5.8), `{base}` rendering and the base-branch clone, and
+the V-1 to V-4 spike results. Until those exist, run feature-team and
+product-discovery with the pre-change expectation that a human merges between
+phases.

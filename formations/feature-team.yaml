@@ -27,13 +27,15 @@ work_split: |
   Design first: write an ADR for the feature with the options considered and
   the chosen one. Then split by module or bounded context, never by job
   title: one work item per developer, each with acceptance criteria that can
-  be checked by running something. Items must not depend on unmerged work of
-  another item; if they do, sequence them. Spawn a developer per item, at most
-  four at a time.
+  be checked by running something. Member pull requests target the flock's
+  integration branch. An item may build on another only after that item's pull
+  request is integrated; otherwise sequence them. Spawn a developer per item,
+  at most four at a time. When every item is integrated, open one pull request
+  from the integration branch to the default branch for the humans.
 
 handoffs:
   software-architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
-  developer:          { deliver: PR link with passing tests and the issue it closes, to: reviewer }
+  developer:          { deliver: PR link against the integration branch with passing tests and the issue it closes, to: reviewer }
   reviewer:           { deliver: "submitted PR review: approve or request changes", to: software-architect }
   ui-tester:          { deliver: test report with screenshots and a PR with e2e tests, to: software-architect }
 
@@ -41,6 +43,7 @@ state:
   kind: github-issues
   label: "flock:{flock}"
   progress_file: PROGRESS.md    # on the lead's branch; chat is coordination, not the record
+  integration_branch: "flokpit/{flock}/integration"   # created by flokpit; the lead integrates approved, green PRs, humans merge the final PR
 
 verification:
   required: [reviewer-approved, ci-green, acceptance-criteria-checked]
@@ -53,7 +56,7 @@ termination:
     - human_stop
     - no_progress_rounds: 3       # three lead check-ins without a newly verified item
     - limits_reached
-  summary: Feature summary with links to the ADR, all PRs and their review state, open risks, and what a human must merge.
+  summary: Feature summary with links to the ADR, all PRs and their review state, the final PR from the integration branch, open risks, and what a human must merge.
 
 limits:
   max_agents: 7                 # lead + 4 developers + reviewer + ui-tester

@@ -26,13 +26,17 @@ spawn_tree:
 
 work_split: |
   1. The project manager writes the spec (problem, users, goals, non-goals,
-     acceptance criteria) and gets it confirmed by a human.
+     acceptance criteria) and gets it confirmed by a human; the confirmed
+     spec is integrated into the flock's integration branch before the
+     ui-tester or the planner start, so they find it in their checkout.
   2. The software architect sketches the architecture and records open
      decisions as ADRs; options, not implementation.
   3. The ui-tester turns acceptance criteria into failing end-to-end tests
      that define "done" for the later build.
   4. The planner (or the project manager for small scopes) files the backlog:
      one issue per work item, linked to spec, ADRs and tests.
+  At the end the project manager opens one pull request from the integration
+  branch to the default branch for the humans.
 
 handoffs:
   project-manager:    { deliver: confirmed spec in a PR, to: software-architect }
@@ -44,6 +48,7 @@ state:
   kind: github-issues
   label: "flock:{flock}"
   progress_file: docs/discovery/{flock}.md
+  integration_branch: "flokpit/{flock}/integration"   # confirmed documents are integrated here; humans merge the final PR
 
 verification:
   required: [spec-confirmed-by-human, adrs-reviewed-by-human]

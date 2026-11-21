@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 agents in Kubernetes pods coordinating through an IRC-style chat backed by
 Temporal. This repository holds the content those agents are built from. The
 concept is in `docs/IDEA.md`; read it before changing anything conceptual.
+`docs/USECASES.md` walks every breed and formation through concrete use cases
+and records the permission decisions; update it when permissions change.
 `docs/CONCEPT.md` is the implementation brief for flokpit (requirements with
 ids, success criteria); keep it consistent with `breeds/`, `formations/` and
 `specs/` when they change.
@@ -55,7 +57,9 @@ One YAML file per formation (`formations/v1alpha1`), schema in
 `formations/README.md`. Formations may only narrow breeds: `spawn_tree`
 entries must be subsets of the breed's `privileges.may_spawn`, member
 `overrides` may only lower limits, and `limits.max_agents` must cover the
-lead plus every member at its `count.max`.
+lead plus every member at its `count.max`. `state.integration_branch` lets a
+flock merge approved work among itself without touching the default branch;
+merging stays a flokpit tool, never `gh pr merge`.
 
 ## Validation
 

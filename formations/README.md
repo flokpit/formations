@@ -29,7 +29,7 @@ Validate with `uv run scripts/validate.py`.
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |
 | `work_split` | 4. work split | how the lead decomposes the task (text, rendered into the lead's instructions) |
 | `handoffs` | 5. hand-off contract | breed → `{deliver, to}`; uses flokpit intents `DONE`, `BLOCKED`, `QUESTION` |
-| `state` | 6. shared state | `kind` (`github-issues`), `label`, `progress_file` |
+| `state` | 6. shared state | `kind` (`github-issues`), `label`, `progress_file`, `integration_branch` (flokpit creates it; members' pull requests target it; the lead integrates approved, green PRs through a flokpit tool; humans merge the one final PR) |
 | `verification` | 7. verification gate | `required`, `optional`, `verifier_is_not_author` |
 | `termination` | 8. termination | `conditions` (any one ends the flock), `summary` (what the lead posts at the end) |
 | `limits` | 9. flock budget and limits | `max_agents` (channel mode `M`), `max_lifetime`, `max_budget_usd` (0 = no cap), `turn_budget` (agent wakes per human message) |
@@ -38,7 +38,8 @@ Validate with `uv run scripts/validate.py`.
 | `kickoff` | start | what the lead posts and does first |
 
 Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
-`{repo}`, `{spawner}`.
+`{repo}`, `{spawner}`. `bug-sweep` has no integration branch on purpose: its fixes
+are independent and stay revertable one by one.
 
 ## Rules
 
@@ -50,4 +51,8 @@ Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
 - **Limits stack.** Each agent keeps its breed limits; the flock limits apply
   on top. `max_agents` counts the lead.
 - **Humans stay in charge.** Ops in the channel can stop the flock at any
-  time; merges to the default branch always need a human.
+  time; merges to the default branch always need a human. With an
+  `integration_branch`, agents merge only into that branch, and only through
+  the flokpit integrate tool, never by `gh pr merge`.
+- **Use cases.** Each formation was walked through a concrete task against its
+  breeds' permissions in [`docs/USECASES.md`](../docs/USECASES.md).

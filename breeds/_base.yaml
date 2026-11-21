@@ -36,7 +36,12 @@ os:
   tmp_size: 1Gi
   network:
     egress: allowlist           # enforced by the pod network policy and egress proxy
-    allow: [github.com, api.github.com, codeload.github.com]
+    allow:                      # lists replace: breeds that set their own allow list repeat these
+      - github.com
+      - api.github.com
+      - codeload.github.com
+      - raw.githubusercontent.com
+      - objects.githubusercontent.com   # GitHub release assets redirect here
 
 runtime:
   image: base                   # flokpit agent image: git, gh, node, python, ripgrep, jq
@@ -57,12 +62,43 @@ lifecycle:
 tools:
   read:
     "**": allow
+    "/proc/**": deny            # /proc/*/environ
+    "/var/run/secrets/**": deny # service account token
+    "/run/secrets/**": deny
+    "/home/agent/.ssh/**": deny
+    "/home/agent/.config/gh/**": deny
   edit: {}                      # no writes unless a breed allows them
   bash:
     "git status*": allow
     "git log*": allow
     "git diff*": allow
     "git show*": allow
+    "git blame*": allow
+    "git grep*": allow
+    "git ls-files*": allow
+    "git rev-parse*": allow
+    "git merge-base*": allow
+    "git cat-file*": allow
+    "git rev-list*": allow
+    "git branch*": allow
+    "git fetch*": allow         # local-only operations below; pushing needs a credential and a breed rule
+    "git pull*": allow
+    "git merge *": allow
+    "git rebase *": allow
+    "git stash*": allow
+    "git switch*": allow
+    "git worktree *": allow
+    "gh repo view*": allow      # read-only GitHub for orientation and status
+    "gh search *": allow
+    "gh issue view*": allow
+    "gh issue list*": allow
+    "gh pr view*": allow
+    "gh pr list*": allow
+    "gh pr diff*": allow
+    "gh pr checks*": allow
+    "gh run list*": allow
+    "gh run view*": allow
+    "gh label list*": allow
     "rg *": allow
     "jq *": allow
     "sudo *": deny
@@ -87,4 +123,4 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:read"]
+  github: ["contents:read", "issues:read", "pull_requests:read", "checks:read", "actions:read"]   # lists replace: breeds repeat what they keep

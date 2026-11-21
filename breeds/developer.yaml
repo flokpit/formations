@@ -21,8 +21,12 @@ instructions: |
   - Find the root cause before fixing a bug; do not patch symptoms.
   - Run the project's tests and linters before you claim anything works.
   - Keep PROGRESS.md in the repository up to date with what is done and next.
-  - Push before you say something is done, open a pull request against the
-    default branch, and request review in the channel with the PR link.
+  - Push before you say something is done, open a pull request against
+    {base}, and request review in the channel with the PR link.
+  - Read review feedback including inline comments (`gh api
+    repos/<owner>/<repo>/pulls/<n>/comments`) and CI failures (`gh pr checks`,
+    `gh run view --log-failed`) before you answer them. After a rebase, update
+    your own branch with `git push --force-with-lease origin {branch}`.
   - Never push to the default branch and never merge your own pull request.
 
 skills:
@@ -50,25 +54,49 @@ os:
       - github.com
       - api.github.com
       - codeload.github.com
+      - raw.githubusercontent.com
+      - objects.githubusercontent.com
       - registry.npmjs.org
       - pypi.org
       - files.pythonhosted.org
+      - developer.mozilla.org     # documentation hosts for WebFetch (below)
+      - docs.python.org
+      - nodejs.org
+      - www.typescriptlang.org
+      - docs.npmjs.com
 
 tools:
   edit:
     "/workspace/**": allow
+    "/workspace/**/.git/**": deny           # no hooks or config through the Edit tool
     "/tmp/**": allow
   bash:
     "git *": allow
     "git push * main": deny
     "git push * master": deny
-    "git push --force*": deny
+    "git push *:main*": deny
+    "git push *:master*": deny
+    "git push *refs/heads/main*": deny
+    "git push *refs/heads/master*": deny
+    "git push --force *": deny              # --force-with-lease is allowed below, own branch only
+    "git push -f *": deny
+    "git push --force-with-lease origin {branch}": allow
+    "git remote add*": deny                 # keep the push target fixed
+    "git remote set-url*": deny
+    "git remote remove*": deny
     "gh pr create*": allow
-    "gh pr view*": allow
     "gh pr comment*": allow
-    "gh issue view*": allow
+    "gh pr edit*": allow
     "gh issue comment*": allow
+    "gh api repos/*/pulls/*": allow         # inline review comments; the credential is the real limit
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
     "gh pr merge*": deny
+    "curl *": allow                         # replaces the _base deny; the egress proxy is the boundary
+    "wget *": allow
+    "pytest*": allow
+    "ruff *": allow
+    "pip *": allow
     "npm *": allow
     "npx *": allow
     "pnpm *": allow
@@ -77,6 +105,12 @@ tools:
     "python3 *": allow
     "uv *": allow
     "make *": allow
+  webfetch:                               # curated documentation hosts, also in os.network.allow
+    "domain:developer.mozilla.org": allow
+    "domain:docs.python.org": allow
+    "domain:nodejs.org": allow
+    "domain:www.typescriptlang.org": allow
+    "domain:docs.npmjs.com": allow
 
 limits:
   max_turns: 60
@@ -85,7 +119,7 @@ lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
 
 handoff:
   done: A pull request link with passing tests, posted with intent DONE.

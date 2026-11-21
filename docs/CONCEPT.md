@@ -118,8 +118,14 @@ Sections: `lead {breed, op, overrides}`, `members[] {breed, count {min, max},
 start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 `handoffs`, `state`, `verification`, `termination {conditions, summary}`,
 `limits {max_agents, max_lifetime, max_budget_usd, turn_budget}`, `channel`,
-`escalate_to_human`, `kickoff`. Placeholders `{flock}`, `{task}`, `{repo}`,
-`{spawner}`. Details: `formations/README.md`.
+`escalate_to_human`, `kickoff`. `state` may name an `integration_branch`
+(5.9). Placeholders `{flock}`, `{task}`, `{repo}`, `{spawner}`. Details:
+`formations/README.md`.
+
+Breed instructions and tool patterns also know `{base}`: the branch an agent's
+pull requests target. It is the repository's default branch, or the flock's
+integration branch for members of a flock whose formation sets one; agentd
+also clones that branch.
 
 ## 5. Technical concept
 
@@ -266,8 +272,16 @@ design. Delivery path:
 - `credentials.github` lists scopes the agent asks the gateway for. The
   gateway MUST NOT grant more than today's role behaviour allows; a breed can
   only narrow (`contents:read` instead of write).
-- `workspace.clone: false` (project-manager) means no checkout; agentd starts
-  in an empty `/workspace`.
+- Every breed's list includes read scopes beyond today's roles
+  (`issues:read`, `pull_requests:read`, `checks:read`, `actions:read`): without
+  them `gh pr checks`, `gh run view` and issue reads fail with 403 on private
+  repositories. The gateway grants them read-only. `contents:write-own-branch`
+  stays limited to the agent's own branch.
+- Breeds that review must act under a different GitHub identity than the
+  breeds whose work they review (F-9); otherwise GitHub refuses the approval.
+- `workspace.clone: false` means no checkout; agentd starts in an empty
+  `/workspace`. No shipped breed uses it any more: the project-manager writes
+  specs and progress files into the repository.
 - `handoff.done` is appended to the system prompt as "When you are done:
   …"; `handoff.next` is informational in phase 1–2 and used by formations.
 
@@ -305,6 +319,17 @@ id `flock:<org>:<flock>`) owns the flock state:
   `DONE` and confirmed by a human op. On termination: summary request to the
   lead, graceful kill of all members, lead posts `termination.summary`, then
   the lead is killed.
+- **Integration branch.** If `state.integration_branch` is set, flokpit
+  creates it from the default branch at flock start and clones members from
+  it; their pull requests target it (`{base}`). The lead integrates a pull
+  request through a flokpit MCP tool (proposed name `flock_integrate`;
+  `flokpit/*` is already allowed in every breed) that checks, server-side,
+  that the PR's base is the integration branch, that it has an approval from
+  an agent other than its author, and that its checks are green. Every
+  breed keeps `gh pr merge*` denied, so no member can merge by shell, and
+  nothing can merge into the default branch (F-5); the lead opens one pull
+  request from the integration branch to the default branch and a human merges
+  it.
 - **Escalation** is prompt-level: the lead is instructed to ask with intent
   `QUESTION`; merges are additionally blocked by tool permissions.
 
@@ -334,7 +359,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | B-2 | Every breed file MUST validate against `specs/breed.schema.json`, and every resolved breed against `#/$defs/resolved`. An invalid breed MUST NOT be spawnable; flokpit MUST report it at startup (like `loadRoles` errors today) and keep serving the valid ones. |
 | B-3 | Resolution MUST use the merge rule of 4.1 exactly (maps merge, lists and scalars replace). |
 | B-4 | The rendered `Role` MUST pass the existing strict `Role` schema and the agentd `RoleSpec` parity test. |
-| B-5 | Tool rendering MUST follow 5.4: deny beats allow, unlisted means denied, absolute paths use `//`, `{branch}` rendered per agent. |
+| B-5 | Tool rendering MUST follow 5.4: deny beats allow, unlisted means denied, absolute paths use `//`, `{branch}` and `{base}` rendered per agent. |
 | B-6 | `/spawn <breed>` arguments and formations MUST only narrow a breed (limits lower, tools fewer, spawn rights fewer); flokpit already enforces this for `/spawn`. |
 | B-7 | `privileges.may_spawn` MUST replace `Role.may_spawn` in `maySpawn()` with unchanged semantics (humans unrestricted). |
 | B-8 | User-facing text MUST say "breed"; the API SHOULD accept `role` as a deprecated alias for one release. |
@@ -373,6 +398,8 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | F-5 | Merges to the default branch MUST NOT be possible for any flock member (tool permissions), regardless of what the formation text says. |
 | F-6 | Flock state (members, counts, termination reason) SHOULD be visible in the UI's channel overview and via a query on `FlockWorkflow`. |
 | F-7 | The lead's kickoff text SHOULD be built from the formation sections, not hand-written per formation. |
+| F-8 | With `state.integration_branch`, flokpit MUST create the branch, point members' clones and `{base}` at it, and reject a flock member's PR to another base. The integrate tool MUST refuse a PR whose base is not the integration branch, whose approval comes from its own author, or whose checks are not green. |
+| F-9 | Agents of different breeds MUST act under different GitHub identities (or flokpit MUST provide an equivalent approval signal), so a reviewer's approval is a GitHub fact and verifier-is-not-author holds. |
 
 ### 7.5 Cross-cutting
 
@@ -406,6 +433,8 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | SC-14 | `max_lifetime` expiry and `/land` both end the flock: summary posted, all members gone | workflow tests |
 | SC-15 | No flock member can merge to the default branch | tool rendering test and one real attempt |
 | SC-16 | Docs updated (X-6) | review |
+| SC-17 | In a `feature-team` flock, a developer PR targets the integration branch; the lead integrates it only after reviewer approval and green checks; the lead's attempt to integrate a PR with another base, or any member's `gh pr merge`, fails | workflow tests and one real run |
+| SC-18 | A reviewer's `gh pr review --approve` on a developer's PR succeeds (different identities) | one real run |
 
 ## 9. Non-goals
 
