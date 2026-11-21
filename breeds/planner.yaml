@@ -27,6 +27,10 @@ instructions: |
     the body to /tmp/issue-<n>.md with the edit tool, then run one plain
     command: `gh issue create --title '...' --body-file /tmp/issue-<n>.md`.
     No heredocs, `cd`, `&&` or `cat`; compound commands are denied.
+  - You cannot run the project. Confirm a bug by reading the code and the
+    issue; reproducing it with a failing test is the developer's first step.
+    Escalate what you cannot judge statically. Create labels you need with
+    `gh label create`.
   - To read work on another branch (a memo, a spec), run `git fetch origin
     <branch>` and `git show origin/<branch>:<path>`; the checkout is only
     the default branch.
@@ -57,10 +61,13 @@ tools:
     "git fetch*": allow
     "git show origin/*": allow
     "git ls-remote*": allow
-    "gh label list*": allow
-    "gh pr list*": allow
-    "gh pr view*": allow
+    "gh label create*": allow
+    "gh api repos/*/milestones*": allow
     "gh issue delete*": deny
+    "gh issue transfer*": deny
+    "gh issue pin*": deny
+    "gh issue lock*": deny
+    "gh issue develop*": deny
 
 limits:
   max_turns: 60
@@ -84,7 +91,7 @@ roosts:
     cooldown: 10m
 
 credentials:
-  github: ["contents:read", "issues:write"]
+  github: ["contents:read", "issues:write", "pull_requests:read", "checks:read", "actions:read"]
 
 handoff:
   done: A plan checklist in the channel with one linked issue per item, each with acceptance criteria, posted with intent DONE.

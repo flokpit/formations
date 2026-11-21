@@ -285,8 +285,16 @@ design. Delivery path:
 - `credentials.github` lists scopes the agent asks the gateway for. The
   gateway MUST NOT grant more than today's role behaviour allows; a breed can
   only narrow (`contents:read` instead of write).
-- `workspace.clone: false` (project-manager) means no checkout; agentd starts
-  in an empty `/workspace`.
+- Every breed's list includes read scopes beyond today's roles
+  (`issues:read`, `pull_requests:read`, `checks:read`, `actions:read`): without
+  them `gh pr checks`, `gh run view` and issue reads fail with 403 on private
+  repositories. The gateway grants them read-only. `contents:write-own-branch`
+  stays limited to the agent's own branch.
+- Breeds that review must act under a different GitHub identity than the
+  breeds whose work they review (F-8); otherwise GitHub refuses the approval.
+- `workspace.clone: false` means no checkout; agentd starts in an empty
+  `/workspace`. Only the event breeds (watchdog, resumer) use it; the
+  project-manager clones the repository to write specs and progress files.
 - `handoff.done` is appended to the system prompt as "When you are done:
   …"; `handoff.next` is informational in phase 1–2 and used by formations.
 
@@ -389,6 +397,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | F-5 | Merges to the default branch MUST NOT be possible for any flock member (tool permissions), regardless of what the formation text says. |
 | F-6 | Flock state (members, counts, termination reason) SHOULD be visible in the UI's channel overview and via a query on `FlockWorkflow`. |
 | F-7 | The lead's kickoff text SHOULD be built from the formation sections, not hand-written per formation. |
+| F-8 | Agents of different breeds MUST act under different GitHub identities (or flokpit MUST provide an equivalent approval signal), so a reviewer's approval is a GitHub fact and verifier-is-not-author holds. |
 
 ### 7.5 Cross-cutting
 
@@ -423,6 +432,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | SC-15a | A developer in a `ui-bugfixing` flock can push to `ui-bugfixing/{date}` but not to the default branch | tool rendering test and one real attempt |
 | SC-15 | No flock member can merge to the default branch | tool rendering test and one real attempt |
 | SC-16 | Docs updated (X-6) | review |
+| SC-17 | A reviewer's `gh pr review --approve` on a developer's PR succeeds (different identities) | one real run |
 
 ## 9. Non-goals
 

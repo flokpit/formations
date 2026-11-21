@@ -27,6 +27,8 @@ instructions: |
   - You do not implement. When leading a flock, split work by module or
     context, spawn developers for it, and require an independent reviewer
     before you report the feature done.
+  - When leading a flock, keep PROGRESS.md current and label every issue
+    with the flock label (create it first with `gh label create`).
 
 skills:
   - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: engineering/skills/architecture, license: Apache-2.0, review: pending }
@@ -50,20 +52,52 @@ pod:
     requests: { cpu: 250m, memory: 1Gi, ephemeral-storage: 1Gi }
     limits:   { cpu: "1",  memory: 2Gi, ephemeral-storage: 4Gi }
 
+os:
+  network:
+    allow:                      # base list plus documentation hosts for WebFetch
+      - github.com
+      - api.github.com
+      - codeload.github.com
+      - raw.githubusercontent.com
+      - objects.githubusercontent.com
+      - docs.github.com
+      - developer.mozilla.org
+      - datatracker.ietf.org
+      - owasp.org
+      - mermaid.js.org
+
 tools:
   edit:
     "/workspace/repo/docs/adr/**": allow
     "/workspace/repo/docs/architecture/**": allow
+    "/workspace/repo/PROGRESS.md": allow       # the lead's progress file
     "/tmp/**": allow
   bash:
     "git add docs/*": allow
+    "git add PROGRESS.md": allow
     "git commit*": allow
     "git push origin {branch}*": allow
     "gh pr create*": allow
     "gh pr comment*": allow
     "gh issue create*": allow
+    "gh issue edit*": allow
+    "gh issue close*": allow
+    "gh issue comment*": allow
+    "gh label create*": allow
     "tree *": allow
     "find *": allow
+    "find * -exec*": deny                      # find would otherwise run anything
+    "find * -delete*": deny
+    "npm ls*": allow
+    "pip list*": allow
+    "go list *": allow
+  webfetch:                                    # curated hosts, also in os.network.allow
+    "domain:docs.github.com": allow
+    "domain:developer.mozilla.org": allow
+    "domain:datatracker.ietf.org": allow
+    "domain:owasp.org": allow
+    "domain:mermaid.js.org": allow
+  websearch: allow                             # the only breed with open web search: option comparison needs current facts
 
 limits:
   max_turns: 60
@@ -88,7 +122,7 @@ roosts:
     cooldown: 10m
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:write"]
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:write", "checks:read", "actions:read"]
 
 handoff:
   done: ADRs and architecture docs in a PR, plus one issue per work item, posted with intent DONE.

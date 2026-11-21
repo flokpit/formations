@@ -15,7 +15,7 @@ model:
 
 instructions: |
   You are {nick}, a code reviewer agent in the flokpit chat, spawned by
-  {spawner} in {channel}. The repository {repo} is checked out read-only at
+  {spawner} in {channel}. The repository {repo} is checked out at
   /workspace/repo.
 
   - Review the pull request you are given: correctness first, then security,
@@ -24,9 +24,17 @@ instructions: |
     configuration `mise run test-suite` (or `mise run check`), otherwise the
     commands the project's AGENTS.md or CLAUDE.md names. After checking out a
     PR that changed mise.toml, run `mise install` first.
-  - Every finding names a file and line, what goes wrong and when.
+  - Every finding names a file and line, what goes wrong and when. Post
+    them as inline comments in one PR review: write the review JSON
+    (`body`, `event`, `comments[]` with `path`, `line`, `body`) to
+    /tmp/review.json with the edit tool, then run one plain command: `gh api
+    repos/<owner>/<repo>/pulls/<n>/reviews --input /tmp/review.json`.
+    Summarise the findings in the channel.
+  - Check the pull request against the acceptance criteria of the issue it
+    closes (`gh issue view`), not only against the diff.
   - You are independent: you did not write this code and must not fix it.
-    Post findings as a PR review and summarise them in the channel.
+    You may write scratch files and tests in the checkout to reproduce a
+    finding; never commit or push them, and remove them when you are done.
   - Approve only when you would merge it yourself.
   - If no pull request or branch was named, list open ones with
     `gh pr list`; if there is still none, ask the spawner in {channel}
@@ -50,27 +58,36 @@ runtime:
 pod:
   resources:
     requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
-    limits:   { cpu: "2",  memory: 3Gi, ephemeral-storage: 6Gi }
+    limits:   { cpu: "2",  memory: 6Gi, ephemeral-storage: 8Gi }   # same as developer: it runs the same builds and test suites
 
 os:
   network:
-    allow: [github.com, api.github.com, codeload.github.com, registry.npmjs.org, pypi.org, files.pythonhosted.org]
+    allow: [github.com, api.github.com, codeload.github.com, raw.githubusercontent.com, objects.githubusercontent.com, registry.npmjs.org, pypi.org, files.pythonhosted.org]
 
 tools:
   edit:
-    "/tmp/**": allow            # review notes only; the checkout stays untouched
+    "/workspace/**": allow      # scratch reproductions; harmless: git push is denied and the credential is read-only
+    "/workspace/**/.git/**": deny
+    "/tmp/**": allow
   bash:
-    "git fetch*": allow
     "git checkout*": allow
-    "gh pr list*": allow
     "gh pr checkout*": allow
-    "gh pr view*": allow
-    "gh pr diff*": allow
-    "gh pr checks*": allow
     "gh pr review*": allow
     "gh pr comment*": allow
+    "gh api repos/*/pulls/*": allow         # inline review comments (comments[] on a review)
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
     "gh pr merge*": deny
     "git push*": deny
+    "npm ci*": allow
+    "npm audit*": allow
+    "npm ls*": allow
+    "pnpm install*": allow
+    "pnpm audit*": allow
+    "bun install*": allow
+    "uv sync*": allow
+    "uv run *": allow
+    "python3 -m pip *": allow
     "mise run *": allow
     "mise install*": allow
     "npm test*": allow
@@ -105,7 +122,7 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:read", "pull_requests:write", "issues:read"]
+  github: ["contents:read", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
 
 handoff:
   done: A submitted PR review (approve or request changes) linked in the channel with intent DONE.

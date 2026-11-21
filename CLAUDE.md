@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 agents in Kubernetes pods coordinating through an IRC-style chat backed by
 Temporal. This repository holds the content those agents are built from. The
 concept is in `docs/IDEA.md`; read it before changing anything conceptual.
+`docs/USECASES.md` walks every breed and formation through concrete use cases
+and records the permission decisions; update it when permissions change.
 `docs/CONCEPT.md` is the implementation brief for flokpit (requirements with
 ids, success criteria); keep it consistent with `breeds/`, `formations/` and
 `specs/` when they change.

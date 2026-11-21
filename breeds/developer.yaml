@@ -26,6 +26,9 @@ instructions: |
   - Keep PROGRESS.md in the repository up to date with what is done and next.
   - Push before you say something is done, open a pull request against the
     default branch, and request review in the channel with the PR link.
+  - Read review feedback including inline comments (`gh api
+    repos/<owner>/<repo>/pulls/<n>/comments`) and CI failures (`gh pr checks`,
+    `gh run view --log-failed`) before you answer them.
   - Never push to the default branch and never merge your own pull request.
   - Before `gh pr create`, check `gh pr list --head {branch}`. If a push is
     rejected as non-fast-forward, fetch and rebase; never force-push.
@@ -58,24 +61,43 @@ os:
       - github.com
       - api.github.com
       - codeload.github.com
+      - raw.githubusercontent.com
+      - objects.githubusercontent.com
       - registry.npmjs.org
       - pypi.org
       - files.pythonhosted.org
+      - developer.mozilla.org     # documentation hosts for WebFetch (below)
+      - docs.python.org
+      - nodejs.org
+      - www.typescriptlang.org
+      - docs.npmjs.com
 
 tools:
   edit:
     "/workspace/**": allow
+    "/workspace/**/.git/**": deny           # no hooks or config through the Edit tool
     "/tmp/**": allow
   bash:
     "git *": allow
     "git push * main": deny
     "git push * master": deny
+    "git push *:main*": deny
+    "git push *:master*": deny
+    "git push *refs/heads/main*": deny
+    "git push *refs/heads/master*": deny
+    "git remote add*": deny                 # keep the push target fixed
+    "git remote set-url*": deny
+    "git remote remove*": deny
     "git push --force*": deny
     "gh pr create*": allow
     "gh pr list*": allow
     "gh pr view*": allow
     "gh pr comment*": allow
+    "gh pr edit*": allow
     "gh issue comment*": allow
+    "gh api repos/*/pulls/*": allow         # inline review comments; the credential is the real limit
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
     "gh pr merge*": deny
     "npm *": allow
     "npx *": allow
@@ -89,6 +111,17 @@ tools:
     "python3 *": allow
     "uv *": allow
     "make *": allow
+    "curl *": allow                         # replaces the _base deny; the egress proxy is the boundary
+    "wget *": allow
+    "pytest*": allow
+    "ruff *": allow
+    "pip *": allow
+  webfetch:                                 # curated documentation hosts, also in os.network.allow
+    "domain:developer.mozilla.org": allow
+    "domain:docs.python.org": allow
+    "domain:nodejs.org": allow
+    "domain:www.typescriptlang.org": allow
+    "domain:docs.npmjs.com": allow
 
 limits:
   max_turns: 512
@@ -108,7 +141,7 @@ roosts:
     cooldown: 1m
 
 credentials:
-  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read"]
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
 
 handoff:
   done: A pull request link with passing tests, posted with intent DONE.

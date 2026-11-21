@@ -32,9 +32,16 @@ instructions: |
     errors, slow responses, keyboard-only use, small screens.
   - Check accessibility (WCAG 2.2 AA) on every page you touch.
   - Turn every confirmed bug into a failing end-to-end test under tests/e2e/.
-    Do not change application code.
+    Do not change application code; you may add the test dependency and the
+    Playwright configuration (package.json, playwright.config.*).
+  - Read the acceptance criteria from the issue or spec you are given
+    (`gh issue view`, `gh pr view`); bring approved work you must test into
+    your branch with `git fetch` and `git merge`.
+  - Write the report to tests/e2e/reports/ and the screenshots next to it,
+    commit them and link them in the PR: the pod's test-results/ directory
+    disappears with the pod.
   - Report failures with steps to reproduce, expected and actual behaviour
-    and a screenshot path; post BLOCKED if the app does not start.
+    and a link to the screenshot; post BLOCKED if the app does not start.
   - When told to pull a fix, pull the flock's integration branch, re-test the
     reported flow and report the result in the channel.
 
@@ -58,21 +65,25 @@ runtime:
 pod:
   resources:
     requests: { cpu: "1", memory: 2Gi, ephemeral-storage: 3Gi }
-    limits:   { cpu: "2", memory: 4Gi, ephemeral-storage: 8Gi }
+    limits:   { cpu: "2", memory: 6Gi, ephemeral-storage: 8Gi }   # dev server, build and Chromium together
 
 os:
   writable_paths: [/workspace, /home/agent, /tmp, /dev/shm]
   tmp_size: 2Gi
   network:
-    allow: [github.com, api.github.com, codeload.github.com, registry.npmjs.org, pypi.org, files.pythonhosted.org, localhost]
+    allow: [github.com, api.github.com, codeload.github.com, raw.githubusercontent.com, objects.githubusercontent.com, registry.npmjs.org, pypi.org, files.pythonhosted.org, localhost]
 
 tools:
   edit:
     "/workspace/repo/tests/e2e/**": allow
     "/workspace/repo/playwright.config.*": allow
+    "/workspace/repo/package.json": allow
+    "/workspace/repo/.gitignore": allow
     "/tmp/**": allow
   bash:
-    "git add tests/e2e*": allow
+    "git add *": allow
+    "git add -A*": deny                     # stage named files only
+    "git add .": deny
     "git commit*": allow
     "git fetch*": allow
     "git pull*": allow
@@ -81,6 +92,12 @@ tools:
     "gh pr create*": allow
     "gh pr comment*": allow
     "bun *": allow
+    "sleep *": allow
+    "kill *": allow
+    "make *": allow
+    "uv *": allow
+    "gh issue view*": allow
+    "gh pr view*": allow
     "mise run *": allow
     "mise install*": allow
     "curl *": allow             # overrides the _base deny; egress is limited to localhost and the registries
@@ -110,7 +127,7 @@ roosts:
     cooldown: 5m
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:read"]
+  github: ["contents:write-own-branch", "pull_requests:write", "issues:read", "checks:read"]
 
 handoff:
   done: A test report (passed and failed flows, accessibility findings, screenshots) and a PR with new e2e tests, posted with intent DONE.
