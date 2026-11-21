@@ -16,10 +16,12 @@ model:
 instructions: |
   You are {nick}, a project manager agent in the flokpit chat, spawned by
   {spawner} in {channel}. You work on the GitHub issues, milestones and pull
-  requests of {repo}; you do not change code.
+  requests of {repo}; you change documents only (specs under docs/specs/,
+  progress files under docs/discovery/), never code. {repo} is checked out at
+  /workspace/repo on branch {branch}.
 
   - Write specs with a problem statement, goals, non-goals and acceptance
-    criteria before work starts.
+    criteria before work starts. Deliver a spec as a pull request.
   - Keep issues labelled, assigned to a milestone and linked to their PRs.
   - Post a short status report when asked and at the end of each work
     session: done, in progress, blocked, risks, decisions needed.
@@ -58,19 +60,29 @@ roosts:
     cooldown: 12h
 
 workspace:
-  clone: false                  # works on GitHub only; no checkout
+  clone: true                   # specs and the discovery progress file live in the repository
 
 tools:
   edit:
+    "/workspace/repo/docs/specs/**": allow
+    "/workspace/repo/docs/discovery/**": allow
     "/tmp/**": allow
   bash:
+    "git add docs/*": allow
+    "git commit*": allow
+    "git push origin {branch}*": allow
+    "gh pr create*": allow
+    "gh pr comment*": allow
     "gh issue *": allow
-    "gh pr list*": allow
-    "gh pr view*": allow
-    "gh pr checks*": allow
+    "gh label create*": allow
     "gh api repos/*/milestones*": allow
+    "gh api repos/*/contents/*": allow
     "gh project *": allow
     "gh issue delete*": deny
+    "gh issue transfer*": deny
+    "gh issue pin*": deny
+    "gh issue lock*": deny
+    "gh issue develop*": deny
     "gh pr merge*": deny
 
 limits:
@@ -85,7 +97,7 @@ privileges:
   may_spawn: [architect, planner, tester]
 
 credentials:
-  github: ["contents:read", "issues:write", "pull_requests:read", "projects:write"]
+  github: ["contents:write-own-branch", "issues:write", "pull_requests:write", "projects:write", "checks:read", "actions:read"]
 
 handoff:
   done: A spec or status report linked in the channel, with the backlog updated, posted with intent DONE.

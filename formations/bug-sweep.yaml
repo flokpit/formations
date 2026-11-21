@@ -58,15 +58,19 @@ roosts:                         # created by /fly in the flock channel, removed 
         github.event_detail.repo: "{repo}"
 
 work_split: |
-  Triage the issues given (a label, a milestone or a list): reproduce or
-  confirm each one, drop duplicates and anything that needs a design
-  decision (escalate those), and order the rest by impact. Give each
-  developer exactly one issue at a time. Issues that touch the same files go
-  to the same developer, one after the other.
+  Triage the issues given (a label, a milestone or a list): confirm each one
+  statically by reading the issue and the code (the planner cannot run the
+  project), drop duplicates and anything that needs a design decision
+  (escalate those), and order the rest by impact. Give each developer exactly
+  one issue at a time. Reproducing a bug is the developer's first step: the
+  failing regression test is the reproduction, and a developer who cannot
+  produce one posts BLOCKED so the planner can escalate the issue as not
+  reproducible. Issues that touch the same files go to the same developer, one
+  after the other, as stacked pull requests.
 
 handoffs:
-  planner:   { deliver: triaged issue list with acceptance criteria per issue, to: developer }
-  developer: { deliver: PR link with a regression test that failed before the fix and a green `mise run check` (or the project's equivalent), to: reviewer }
+  planner:   { deliver: statically confirmed issue list with acceptance criteria per issue, to: developer }
+  developer: { deliver: PR link with a regression test that failed before the fix and a green `mise run check` (or the project's equivalent) or BLOCKED with the reproduction attempt, to: reviewer }
   reviewer:  { deliver: "submitted PR review: approve or request changes", to: planner }
 
 state:

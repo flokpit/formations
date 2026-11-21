@@ -63,3 +63,5 @@ Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
   stays human-only.
 - **Humans stay in charge.** Ops in the channel can stop the flock at any
   time; merges to the default branch always need a human.
+- **Use cases.** Each formation was walked through a concrete task against its
+  breeds' permissions in [`docs/USECASES.md`](../docs/USECASES.md).

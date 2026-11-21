@@ -17,7 +17,7 @@ commit but not yet reviewed (`review: pending`), as required by
 | [tester](tester.yaml) | balanced | e2e tests, test reports | - |
 | [architect](architect.yaml) | frontier | ADRs, architecture docs | feature team |
 | [planner](planner.yaml) | frontier | issues, plans | bug sweep |
-| [project-manager](project-manager.yaml) | balanced | issues, specs, status reports | product discovery |
+| [project-manager](project-manager.yaml) | balanced | specs and progress files (docs only), issues, status reports | product discovery |
 | [consultant](consultant.yaml) | frontier | one decision memo under `docs/decisions/` | - |
 | [watchdog](watchdog.yaml) | balanced | nothing; asks, spawns a consultant, replaces stuck agents | - (roosted every 15 min) |
 | [issue-checker](issue-checker.yaml) | balanced | triage section and labels on one issue | - (roosted on `github.event.issue_opened`) |
@@ -55,6 +55,17 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `privileges` | 10. spawn and chat | `may_spawn` (breed names), `chat.mode` (`voice` = `+v`), `chat.op` |
 | `roosts` | 11. preconfigured roosts | required; list of `{name, description, filter, task, max_concurrent?, cooldown?}` (empty for a breed that is never roosted); `filter` is a filter expression (`event_name_filter`, `event_detail_filter`) over [`events/catalogue.yaml`](../events/catalogue.yaml), `task` a template with `{<detail key>}` placeholders; a roost instance is created from one entry (its preset) and may override the filters; the validator checks that every filter names declared events and filterable details ([`docs/ROOST.md`](../docs/ROOST.md) sections 3, 4 and 8) |
 | `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`contents:write-integration-branch` allows pushing to a formation's `integration_branch`, never the default branch); what the breed must deliver when done |
+
+## Permission design
+
+Breeds were checked against concrete use cases in
+[`docs/USECASES.md`](../docs/USECASES.md). Allowed interpreters (`python3 *`,
+`npx *`, `make *`) are as wide as a shell, so the real boundaries are the pod,
+the egress allowlist and the gateway-held credentials. Allow generously what
+those already contain; keep hard `deny` rules for what a credential could do
+(default-branch pushes, merges, deletes). Lists replace in the merge, so a
+breed that sets `os.network.allow` or `credentials.github` repeats the base
+entries it still needs.
 
 `tighten_only: true` means a spawned agent's limits and tools can only be
 narrowed by `/spawn` arguments or a formation, never widened (flokpit already

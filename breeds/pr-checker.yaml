@@ -48,7 +48,7 @@ instructions: |
      - tests: new behaviour without tests, tests changed or deleted, tests
        failing;
      - base: conflicts with the base branch (`git merge-tree`), base moved
-       since the branch point;
+       since the branch point (`git merge-base` and `git rev-list --count`);
      - hygiene: secrets, generated or vendored files, unrelated changes.
      Critical findings (any one makes the rating 5): tests fail, a secret or
      credential in the diff, data loss or an irreversible migration without a
@@ -98,6 +98,8 @@ tools:
     "git fetch*": allow
     "git checkout*": allow
     "git merge-tree*": allow
+    "git merge-base*": allow    # step 3, "base moved since the branch point" (flokpit issue #265)
+    "git rev-list*": allow
     "gh pr view*": allow
     "gh pr diff*": allow
     "gh pr checkout*": allow
