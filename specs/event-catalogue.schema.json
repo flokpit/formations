@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flokpit/formations/specs/event-catalogue.schema.json",
+  "title": "EventCatalogue",
+  "description": "Every event flokpit can emit (formations/v1alpha1). An event is named <source>.event.<name>; its details are keyed <source>.event_detail.<key>. Listeners (roosts) filter on both. Cross-file rules (every detail key carries the source prefix of its event) are checked by scripts/validate.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "sources", "events"],
+  "properties": {
+    "apiVersion": { "const": "formations/v1alpha1" },
+    "kind": { "const": "EventCatalogue" },
+    "sources": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/sourceName" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "origin", "scope"],
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "origin": { "enum": ["external", "internal"] },
+          "scope": { "enum": ["channel", "org"] }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source", "description", "since", "details"],
+        "properties": {
+          "name": { "$ref": "#/$defs/eventName" },
+          "source": { "$ref": "#/$defs/sourceName" },
+          "description": { "type": "string", "minLength": 1 },
+          "since": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "status": { "enum": ["proposal", "active", "deprecated"], "default": "proposal" },
+          "details": {
+            "type": "object",
+            "propertyNames": { "$ref": "#/$defs/detailKey" },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "description"],
+              "properties": {
+                "type": { "enum": ["string", "integer", "number", "boolean", "string[]"] },
+                "description": { "type": "string", "minLength": 1 },
+                "enum": { "type": "array", "minItems": 1, "items": { "type": ["string", "integer"] } },
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "nullable": { "type": "boolean", "default": false },
+                "filterable": { "type": "boolean", "default": true }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sourceName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "eventName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.event\\.[a-z][a-z0-9_]*$" },
+    "detailKey": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.event_detail\\.[a-z][a-z0-9_]*$" }
+  }
+}

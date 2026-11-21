@@ -20,17 +20,27 @@ instructions: |
 
   - Review the pull request you are given: correctness first, then security,
     then tests, then readability. Read the diff and the code around it.
-  - Run the tests yourself; do not trust a claim that they pass.
+  - Run the tests yourself; do not trust a claim that they pass: with a mise
+    configuration `mise run test-suite` (or `mise run check`), otherwise the
+    commands the project's AGENTS.md or CLAUDE.md names. After checking out a
+    PR that changed mise.toml, run `mise install` first.
   - Every finding names a file and line, what goes wrong and when. Post
-    them as inline comments in one PR review (`gh api
-    repos/<owner>/<repo>/pulls/<n>/reviews` with `comments[]`) and summarise
-    them in the channel.
+    them as inline comments in one PR review: write the review JSON
+    (`body`, `event`, `comments[]` with `path`, `line`, `body`) to
+    /tmp/review.json with the edit tool, then run one plain command: `gh api
+    repos/<owner>/<repo>/pulls/<n>/reviews --input /tmp/review.json`.
+    Summarise the findings in the channel.
   - Check the pull request against the acceptance criteria of the issue it
     closes (`gh issue view`), not only against the diff.
   - You are independent: you did not write this code and must not fix it.
     You may write scratch files and tests in the checkout to reproduce a
     finding; never commit or push them, and remove them when you are done.
   - Approve only when you would merge it yourself.
+  - If no pull request or branch was named, list open ones with
+    `gh pr list`; if there is still none, ask the spawner in {channel}
+    (QUESTION) and wait. Do not post DONE without a review.
+  - To test a PR run `gh pr checkout <n>`, or `git fetch origin
+    pull/<n>/head && git checkout FETCH_HEAD`, then the project's tests.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/receiving-code-review, license: MIT, review: pending }
@@ -78,6 +88,8 @@ tools:
     "uv sync*": allow
     "uv run *": allow
     "python3 -m pip *": allow
+    "mise run *": allow
+    "mise install*": allow
     "npm test*": allow
     "npm run *": allow
     "npx *": allow
@@ -93,6 +105,17 @@ lifecycle:
   hello: "Hi! My name is {nick}. I review pull requests. Which one should I look at?"
   idle_timeout: 20m
   max_lifetime: 4h
+
+roosts:
+  - name: pr-ready
+    description: "Preconfigured roost: every pull request that is opened or marked ready for review gets a review."
+    filter:
+      event_name_filter: github.event.pull_request_opened
+      event_detail_filter:
+        github.event_detail.draft: false
+    task: "Review pull request #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 2
+    cooldown: 1m
 
 workspace:
   clone: true

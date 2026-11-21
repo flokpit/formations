@@ -19,15 +19,22 @@ instructions: |
 
   - Write a failing test first, then the code that makes it pass.
   - Find the root cause before fixing a bug; do not patch symptoms.
-  - Run the project's tests and linters before you claim anything works.
+  - Run the project's checks before you claim anything works: with a mise
+    configuration `mise run check` (or `mise run test`, `typecheck`, `e2e`;
+    `mise tasks` lists them), otherwise the commands its AGENTS.md or
+    CLAUDE.md names. Red is a finding to report, not something to push.
   - Keep PROGRESS.md in the repository up to date with what is done and next.
-  - Push before you say something is done, open a pull request against
-    {base}, and request review in the channel with the PR link.
+  - Push before you say something is done, open a pull request against the
+    default branch, and request review in the channel with the PR link.
   - Read review feedback including inline comments (`gh api
     repos/<owner>/<repo>/pulls/<n>/comments`) and CI failures (`gh pr checks`,
-    `gh run view --log-failed`) before you answer them. After a rebase, update
-    your own branch with `git push --force-with-lease origin {branch}`.
+    `gh run view --log-failed`) before you answer them.
   - Never push to the default branch and never merge your own pull request.
+  - Before `gh pr create`, check `gh pr list --head {branch}`. If a push is
+    rejected as non-fast-forward, fetch and rebase; never force-push.
+  - When your flock has an integration branch, skip the pull request: rebase
+    on that branch, run the tests, merge your fix into it, push it, and tell
+    the tester in {channel} to pull.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/test-driven-development, license: MIT, review: pending }
@@ -78,13 +85,13 @@ tools:
     "git push *:master*": deny
     "git push *refs/heads/main*": deny
     "git push *refs/heads/master*": deny
-    "git push --force *": deny              # --force-with-lease is allowed below, own branch only
-    "git push -f *": deny
-    "git push --force-with-lease origin {branch}": allow
     "git remote add*": deny                 # keep the push target fixed
     "git remote set-url*": deny
     "git remote remove*": deny
+    "git push --force*": deny
     "gh pr create*": allow
+    "gh pr list*": allow
+    "gh pr view*": allow
     "gh pr comment*": allow
     "gh pr edit*": allow
     "gh issue comment*": allow
@@ -92,20 +99,24 @@ tools:
     "gh api -X DELETE*": deny
     "gh api --method DELETE*": deny
     "gh pr merge*": deny
+    "npm *": allow
+    "npx *": allow
+    "pnpm *": allow
+    "bun test*": allow
+    "bun run *": allow
+    "bun install*": allow
+    "mise run *": allow
+    "mise install*": allow
+    "node *": allow
+    "python3 *": allow
+    "uv *": allow
+    "make *": allow
     "curl *": allow                         # replaces the _base deny; the egress proxy is the boundary
     "wget *": allow
     "pytest*": allow
     "ruff *": allow
     "pip *": allow
-    "npm *": allow
-    "npx *": allow
-    "pnpm *": allow
-    "bun *": allow
-    "node *": allow
-    "python3 *": allow
-    "uv *": allow
-    "make *": allow
-  webfetch:                               # curated documentation hosts, also in os.network.allow
+  webfetch:                                 # curated documentation hosts, also in os.network.allow
     "domain:developer.mozilla.org": allow
     "domain:docs.python.org": allow
     "domain:nodejs.org": allow
@@ -113,13 +124,24 @@ tools:
     "domain:docs.npmjs.com": allow
 
 limits:
-  max_turns: 60
+  max_turns: 512
 
 lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
 
+roosts:
+  - name: issue-labeled
+    description: "Preconfigured roost: an issue labelled for flokpit becomes this developer's task."
+    filter:
+      event_name_filter: github.event.issue_labeled
+      event_detail_filter:
+        github.event_detail.label: flokpit
+    task: "Implement issue #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 2
+    cooldown: 1m
+
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
 
 handoff:
   done: A pull request link with passing tests, posted with intent DONE.

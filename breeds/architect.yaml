@@ -1,6 +1,6 @@
 apiVersion: formations/v1alpha1
 kind: Breed
-name: software-architect
+name: architect
 description: Analyses a codebase, designs changes, records decisions as ADRs with diagrams, models threats, and can lead a feature-team formation.
 status: proposal
 extends: _base
@@ -27,13 +27,8 @@ instructions: |
   - You do not implement. When leading a flock, split work by module or
     context, spawn developers for it, and require an independent reviewer
     before you report the feature done.
-  - Open pull requests against {base}. When leading a flock, keep
-    PROGRESS.md current, label every issue with the flock label (create it
-    first with `gh label create`), and integrate a pull request into the
-    flock's integration branch with the flokpit integrate tool only after
-    the reviewer approved it and CI is green. At the end open one pull
-    request from the integration branch to the default branch for the
-    humans; never merge to the default branch yourself.
+  - When leading a flock, keep PROGRESS.md current and label every issue
+    with the flock label (create it first with `gh label create`).
 
 skills:
   - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: engineering/skills/architecture, license: Apache-2.0, review: pending }
@@ -111,9 +106,20 @@ lifecycle:
   hello: "Hi! My name is {nick}. I design and document architecture. What are we building?"
 
 privileges:
-  may_spawn: [developer, reviewer, ui-tester]
+  may_spawn: [developer, reviewer, tester]
   chat:
     op: false                   # gets +o only as the lead of a formation (/spawn --op)
+
+roosts:
+  - name: issue-labeled
+    description: "Preconfigured roost: an issue labelled architecture or design gets an architecture decision."
+    filter:
+      event_name_filter: github.event.issue_labeled
+      event_detail_filter:
+        github.event_detail.label: [architecture, design]
+    task: "Write the architecture decision for issue #{github.event_detail.number} of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 1
+    cooldown: 10m
 
 credentials:
   github: ["contents:write-own-branch", "pull_requests:write", "issues:write", "checks:read", "actions:read"]

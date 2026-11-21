@@ -12,9 +12,10 @@ formation text are what make the flock behave.
 
 | Formation | Lead | Members | Shape | Use |
 |---|---|---|---|---|
-| [feature-team](feature-team.yaml) | software-architect | developers (1-4), reviewer, ui-tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
+| [feature-team](feature-team.yaml) | architect | developers (1-4), reviewer, tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
 | [bug-sweep](bug-sweep.yaml) | planner | developers (1-5), reviewer | fan-out, independent verifier | many small, independent issues |
-| [product-discovery](product-discovery.yaml) | project-manager | software-architect, ui-tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
+| [ui-bugfixing](ui-bugfixing.yaml) | planner | tester, developers (3) | continuous find, triage, fix on an integration branch | keep a UI healthy without tickets: the tester explores, the planner triages, developers merge fixes |
+| [product-discovery](product-discovery.yaml) | project-manager | architect, tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
 
 ## Schema (`formations/v1alpha1`)
 
@@ -24,12 +25,14 @@ Validate with `uv run scripts/validate.py`.
 | Section | Formation feature | Fields |
 |---|---|---|
 | `name`, `description`, `status`, `shape` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
+| `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly; if it is missing, a developer creates it (the lead is read-only for git writes) |
 | `lead` | 1. lead | `breed`, `op` (lead gets `+o` in the flock channel), `overrides` |
-| `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand, overrides}` |
+| `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand \| on_roost, overrides}`; `on_roost` members are started only by a roost of the formation |
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |
+| `roosts` | 3a. roosts | list of `{name, breed, preset, filter?, task?, max_concurrent?, cooldown?}`: roosts that `/fly` creates in the flock channel and `/land` removes, each from a member breed's preconfigured roost (`preset`, a name from the breed's `roosts`) with overrides (`event_name_filter` replaces, `event_detail_filter` merges per key and `null` removes a key, `task` and guards replace); placeholders are rendered at `/fly`; see [`docs/ROOST.md`](../docs/ROOST.md) section 4 |
 | `work_split` | 4. work split | how the lead decomposes the task (text, rendered into the lead's instructions) |
 | `handoffs` | 5. hand-off contract | breed → `{deliver, to}`; uses flokpit intents `DONE`, `BLOCKED`, `QUESTION` |
-| `state` | 6. shared state | `kind` (`github-issues`), `label`, `progress_file`, `integration_branch` (flokpit creates it; members' pull requests target it; the lead integrates approved, green PRs through a flokpit tool; humans merge the one final PR) |
+| `state` | 6. shared state | `kind` (`github-issues`), `label`, `progress_file` |
 | `verification` | 7. verification gate | `required`, `optional`, `verifier_is_not_author` |
 | `termination` | 8. termination | `conditions` (any one ends the flock), `summary` (what the lead posts at the end) |
 | `limits` | 9. flock budget and limits | `max_agents` (channel mode `M`), `max_lifetime`, `max_budget_usd` (0 = no cap), `turn_budget` (agent wakes per human message) |
@@ -38,21 +41,27 @@ Validate with `uv run scripts/validate.py`.
 | `kickoff` | start | what the lead posts and does first |
 
 Placeholders: `{flock}` (flock name), `{task}` (the task given at start),
-`{repo}`, `{spawner}`. `bug-sweep` has no integration branch on purpose: its fixes
-are independent and stay revertable one by one.
+`{repo}`, `{spawner}`, `{date}` (ISO date `YYYY-MM-DD` of flock start), `{integration_branch}`.
 
 ## Rules
 
 - **Tighten only.** A formation may narrow its breeds, never widen them:
   `spawn_tree` entries must be subsets of the breed's `privileges.may_spawn`,
   and `overrides` may only lower limits or remove tools.
+- **Roosts narrow too.** A formation roost starts from a breed preset and may
+  only change its filters, task and guards, never the breed; the merged filter
+  must still name declared events and filterable details. An `on_roost`
+  member must have a roost of the formation that names its breed, and its
+  `count.max` bounds how many the roost may have alive (`max_agents` counts
+  them like every member).
 - **Independent verification.** With `verifier_is_not_author: true`, no agent
   verifies work it produced.
 - **Limits stack.** Each agent keeps its breed limits; the flock limits apply
   on top. `max_agents` counts the lead.
+- **Integration branch.** With `integration_branch`, members with
+  `contents:write-integration-branch` merge there directly; the default branch
+  stays human-only.
 - **Humans stay in charge.** Ops in the channel can stop the flock at any
-  time; merges to the default branch always need a human. With an
-  `integration_branch`, agents merge only into that branch, and only through
-  the flokpit integrate tool, never by `gh pr merge`.
+  time; merges to the default branch always need a human.
 - **Use cases.** Each formation was walked through a concrete task against its
   breeds' permissions in [`docs/USECASES.md`](../docs/USECASES.md).

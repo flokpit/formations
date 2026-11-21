@@ -14,14 +14,48 @@ members:
     count: { min: 1, max: 5 }
     start: on_demand            # one per issue; a developer takes the next issue when its PR is approved
     overrides:
-      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 60
+      limits: { max_turns: 40 } # small fixes; narrowed from the breed's 512
       lifecycle: { max_lifetime: 4h }
   - breed: reviewer
     count: { min: 1, max: 1 }
     start: with_flock
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled developer
+  - breed: issue-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # triages issues opened while the sweep runs
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # risk rating and integration tests on every fix PR
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
 spawn_tree:
   planner: [developer, reviewer]
+  watchdog: [consultant, developer, reviewer]
+  resumer: [developer, reviewer, issue-checker, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
+  - name: issue-checker
+    breed: issue-checker
+    preset: new-issue
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
 
 work_split: |
   Triage the issues given (a label, a milestone or a list): confirm each one
@@ -32,12 +66,11 @@ work_split: |
   failing regression test is the reproduction, and a developer who cannot
   produce one posts BLOCKED so the planner can escalate the issue as not
   reproducible. Issues that touch the same files go to the same developer, one
-  after the other, as stacked pull requests. Pull requests target the default
-  branch: fixes are independent and stay revertable one by one.
+  after the other, as stacked pull requests.
 
 handoffs:
   planner:   { deliver: statically confirmed issue list with acceptance criteria per issue, to: developer }
-  developer: { deliver: PR link with a regression test that failed before the fix (or BLOCKED with the reproduction attempt), to: reviewer }
+  developer: { deliver: PR link with a regression test that failed before the fix and a green `mise run check` (or the project's equivalent) or BLOCKED with the reproduction attempt, to: reviewer }
   reviewer:  { deliver: "submitted PR review: approve or request changes", to: planner }
 
 state:
@@ -57,7 +90,7 @@ termination:
   summary: Table of issues with status (fixed and approved, escalated, rejected as duplicate or not reproducible) and PR links.
 
 limits:
-  max_agents: 7                 # lead + 5 developers + reviewer
+  max_agents: 14                # lead + 5 developers + reviewer + consultant + 2 issue-checkers + 2 pr-checkers + watchdog + resumer
   max_lifetime: 6h
   max_budget_usd: 0
   turn_budget: 40

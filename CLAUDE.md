@@ -21,8 +21,8 @@ one maintenance script.
 
 ## Vocabulary
 
-- **Breed**: a kind of agent (developer, reviewer, planner, ui-tester,
-  software-architect, project-manager). flokpit calls this a *role*
+- **Breed**: a kind of agent (developer, reviewer, planner, tester,
+  architect, project-manager). flokpit calls this a *role*
   (`roles/*.yaml`, `RoleSpec` in `../flokpit/docs/concepts/agent_spawner.md`
   section 8); do not use "role" here. A breed defines pod resources, OS
   permissions, skills, the `AGENTS.md` main instruction, runtime features,
@@ -57,17 +57,28 @@ One YAML file per formation (`formations/v1alpha1`), schema in
 `formations/README.md`. Formations may only narrow breeds: `spawn_tree`
 entries must be subsets of the breed's `privileges.may_spawn`, member
 `overrides` may only lower limits, and `limits.max_agents` must cover the
-lead plus every member at its `count.max`. `state.integration_branch` lets a
-flock merge approved work among itself without touching the default branch;
-merging stays a flokpit tool, never `gh pr merge`.
+lead plus every member at its `count.max`.
+
+## Events (`events/`)
+
+`events/catalogue.yaml` declares every event flokpit can emit (schema
+`specs/event-catalogue.schema.json`): names `<source>.event.<name>`, detail
+keys `<source>.event_detail.<key>`. Roosts (event listeners that spawn a breed
+or fly a formation, `docs/ROOST.md`) can only filter on declared events and
+filterable details. Declare an event here before flokpit emits it. Every breed
+declares its preconfigured roosts (`roosts:`, required, may be empty); a
+formation's `roosts:` creates roosts from member presets with filter
+overrides, and `start: on_roost` members are started only by them. The
+validator checks all of these against the catalogue.
 
 ## Validation
 
-`specs/breed.schema.json` and `specs/formation.schema.json` (JSON Schema
-2020-12) define the file shapes; `scripts/validate.py` checks every file
-against them plus the cross-file rules (merged breeds complete, references
-exist, formations only narrow). Run it after any change to `breeds/`,
-`formations/` or `specs/`; dependencies come from the script's inline
+`specs/breed.schema.json`, `specs/formation.schema.json` and
+`specs/event-catalogue.schema.json` (JSON Schema 2020-12) define the file
+shapes; `scripts/validate.py` checks every file against them plus the
+cross-file rules (merged breeds complete, references exist, formations only
+narrow, event names and detail keys carry their source). Run it after any
+change to `breeds/`, `formations/`, `events/` or `specs/`; dependencies come from the script's inline
 metadata via `uv`:
 
 ```sh
@@ -81,13 +92,25 @@ CI (`.github/workflows/validate.yml`) runs the validator once per breed and
 formation file, as a matrix built from `breeds/*.yaml` and
 `formations/*.yaml`, on every push to `main` and every pull request.
 
-On pushes to `main`, after every validation job passed, the `publish` job
-packs `breeds/` and `formations/` into `<short sha>.tar.gz` (reproducible tar),
-uploads it to the bunny.net storage zone, verifies it by checksum, and then
-overwrites `LATEST` in the zone with that file name. Credentials are the
-repository secrets `FORMATIONS_BUNNY_BUCKET_NAME` and
-`FORMATIONS_BUNNY_BUCKET_WRITE_SECRET`; locally they live in `.env.local`,
-which must never be committed (`.env.*` is ignored).
+The release ships an archive built by `scripts/build-archive.sh`:
+`README.md`, `LICENSE`, `breeds/`, `formations/`, `events/`, `specs/` and
+`scripts/validate.py` in a reproducible
+tar.gz (the validator keeps that exact path, so it runs in place after
+extraction), plus a `.sha256` next to it.
+
+The public channel is **GitHub Releases** with human-cut tags (`v0.1.0`, `v0.2.0`,
+...; see `docs/decisions/002-release-channel.md`). Pushing a tag `v*` runs the
+validation matrix and then the `release` job, which attaches
+`formations-<tag>.tar.gz` and its `.sha256` to a release. Consumers download
+
+```
+https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz
+```
+
+unauthenticated, and the pin is that tag.
+
+The bunny.net storage zone upload (`<short sha>.tar.gz` plus `LATEST`) is gone;
+the zone was deleted. Releases are the only publish path.
 
 ## Research bundle (`docs/resources/`)
 

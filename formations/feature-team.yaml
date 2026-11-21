@@ -1,12 +1,12 @@
 apiVersion: formations/v1alpha1
 kind: Formation
 name: feature-team
-description: Implements a feature that spans several modules; an architect designs and splits the work, developers build in parallel, an independent reviewer and an optional ui-tester verify.
+description: Implements a feature that spans several modules; an architect designs and splits the work, developers build in parallel, an independent reviewer and an optional tester verify.
 status: proposal
 shape: orchestrator-workers-verifier
 
 lead:
-  breed: software-architect
+  breed: architect
   op: true
 
 members:
@@ -16,38 +16,61 @@ members:
   - breed: reviewer
     count: { min: 1, max: 1 }
     start: with_flock
-  - breed: ui-tester
+  - breed: tester
     count: { min: 0, max: 1 }
     start: on_demand            # only when the feature has a user interface
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled member
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost             # risk rating and integration tests on every PR of the feature
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
 
 spawn_tree:
-  software-architect: [developer, reviewer, ui-tester]
+  architect: [developer, reviewer, tester]
+  watchdog: [consultant, developer, reviewer, tester]
+  resumer: [developer, reviewer, tester, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
 
 work_split: |
-  Design first: write an ADR for the feature with the options considered and
+  Design first: read how the project is run (`mise tasks`, else its AGENTS.md
+  or CLAUDE.md) and write an ADR for the feature with the options considered and
   the chosen one. Then split by module or bounded context, never by job
   title: one work item per developer, each with acceptance criteria that can
-  be checked by running something. Member pull requests target the flock's
-  integration branch. An item may build on another only after that item's pull
-  request is integrated; otherwise sequence them. Spawn a developer per item,
-  at most four at a time. When every item is integrated, open one pull request
-  from the integration branch to the default branch for the humans.
+  be checked by running something. Items must not depend on unmerged work of
+  another item; if they do, sequence them. Spawn a developer per item, at most
+  four at a time.
 
 handoffs:
-  software-architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
-  developer:          { deliver: PR link against the integration branch with passing tests and the issue it closes, to: reviewer }
-  reviewer:           { deliver: "submitted PR review: approve or request changes", to: software-architect }
-  ui-tester:          { deliver: test report with screenshots and a PR with e2e tests, to: software-architect }
+  architect: { deliver: ADR PR and one issue per work item with acceptance criteria, to: developer }
+  developer:          { deliver: PR link with passing tests and the issue it closes, to: reviewer }
+  reviewer:           { deliver: "submitted PR review: approve or request changes", to: architect }
+  tester:          { deliver: test report with screenshots and a PR with e2e tests, to: architect }
 
 state:
   kind: github-issues
   label: "flock:{flock}"
   progress_file: PROGRESS.md    # on the lead's branch; chat is coordination, not the record
-  integration_branch: "flokpit/{flock}/integration"   # created by flokpit; the lead integrates approved, green PRs, humans merge the final PR
 
 verification:
   required: [reviewer-approved, ci-green, acceptance-criteria-checked]
-  optional: [ui-tester-passed]
+  optional: [tester-passed]
   verifier_is_not_author: true
 
 termination:
@@ -56,10 +79,10 @@ termination:
     - human_stop
     - no_progress_rounds: 3       # three lead check-ins without a newly verified item
     - limits_reached
-  summary: Feature summary with links to the ADR, all PRs and their review state, the final PR from the integration branch, open risks, and what a human must merge.
+  summary: Feature summary with links to the ADR, all PRs and their review state, open risks, and what a human must merge.
 
 limits:
-  max_agents: 7                 # lead + 4 developers + reviewer + ui-tester
+  max_agents: 12                # lead + 4 developers + reviewer + tester + consultant + 2 pr-checkers + watchdog + resumer
   max_lifetime: 8h
   max_budget_usd: 0
   turn_budget: 40

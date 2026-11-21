@@ -1,8 +1,8 @@
 ---
 type: Analysis
 title: Skills by Breed
-description: Which public skills fit the developer, ui-tester, software-architect, project-manager, reviewer and planner breeds, what each needs inside the agent container, and which do not work headless in a flokpit pod.
-tags: [skills, breeds, developer, ui-tester, software-architect, project-manager, reviewer, planner, headless, container]
+description: Which public skills fit the developer, tester, architect, project-manager, reviewer and planner breeds, what each needs inside the agent container, and which do not work headless in a flokpit pod.
+tags: [skills, breeds, developer, tester, architect, project-manager, reviewer, planner, headless, container]
 sources:
   - id: anthropic-skills
     resource: https://github.com/anthropics/skills
@@ -115,7 +115,7 @@ stacks. Breeds are defined in [IDEA](../../IDEA.md) (outside this bundle).
 | modern-python, property-based-testing, mutation-testing | trailofbits/skills `plugins/<name>/skills/<name>` | Python tooling, PBT, mutation tests | Python, uv | secondary[^trailofbits] |
 | commit, iterate-pr, find-bugs | getsentry/skills `skills/...` | Commit hygiene, CI fix loop | git, `gh` | secondary[^sentry] |
 
-## ui-tester
+## tester
 
 | Skill | Repository and path | Purpose | Runtime in the pod | Headless | Fit |
 |---|---|---|---|---|---|
@@ -133,11 +133,11 @@ stacks. Breeds are defined in [IDEA](../../IDEA.md) (outside this bundle).
 | playwright-skill | lackeyjb/playwright-skill `skills/playwright-skill` | General Playwright automation | Node 20+, Chromium download on first run | **visible browser by default**, must be forced headless | secondary[^playwright-skill] |
 | dev-browser | SawyerHood/dev-browser `skills/dev-browser` | Persistent-page browser scripting | `dev-browser` CLI, Chrome | `--headless` works; extension mode does not | secondary[^dev-browser] |
 
-The ui-tester is the only breed that needs a browser in its image (Playwright
+The tester is the only breed that needs a browser in its image (Playwright
 plus Chromium is about 400 MB). Browsers must be baked into the image, not
 downloaded on first run.
 
-## software-architect
+## architect
 
 | Skill | Repository and path | Purpose | Runtime in the pod | Fit |
 |---|---|---|---|---|
@@ -223,7 +223,7 @@ be written here.
   `doc-coauthoring` and `requirements-clarity` ask the user questions. In
   flokpit those questions must go to the channel with intent `QUESTION`, or
   the skill must be told to proceed on its own.
-- **Image weight.** Playwright and Chromium only in the ui-tester image;
+- **Image weight.** Playwright and Chromium only in the tester image;
   Mermaid rendering also pulls in Chromium; CodeQL is large.
 - **Network.** Some skills fetch rules or browsers at runtime; pre-bake them
   and keep egress closed.

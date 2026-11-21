@@ -14,10 +14,23 @@ commit but not yet reviewed (`review: pending`), as required by
 |---|---|---|---|
 | [developer](developer.yaml) | frontier | code on its own branch, PRs | - |
 | [reviewer](reviewer.yaml) | balanced | PR reviews only | - |
-| [ui-tester](ui-tester.yaml) | balanced | e2e tests, test reports | - |
-| [software-architect](software-architect.yaml) | frontier | ADRs, architecture docs | feature team |
+| [tester](tester.yaml) | balanced | e2e tests, test reports | - |
+| [architect](architect.yaml) | frontier | ADRs, architecture docs | feature team |
 | [planner](planner.yaml) | frontier | issues, plans | bug sweep |
 | [project-manager](project-manager.yaml) | balanced | specs and progress files (docs only), issues, status reports | product discovery |
+| [consultant](consultant.yaml) | frontier | one decision memo under `docs/decisions/` | - |
+| [watchdog](watchdog.yaml) | balanced | nothing; asks, spawns a consultant, replaces stuck agents | - (roosted every 15 min) |
+| [issue-checker](issue-checker.yaml) | balanced | triage section and labels on one issue | - (roosted on `github.event.issue_opened`) |
+| [pr-checker](pr-checker.yaml) | balanced | one risk comment per PR, changes-requested review when critical | - (roosted on opened and updated PRs) |
+| [resumer](resumer.yaml) | fast | nothing; wakes and respawns agents interrupted by a token limit | - (roosted on `provider.event.budget_reset`) |
+
+Every breed declares `roosts:`, its **preconfigured roosts**: the filter
+expression it is written for and the default task. A roost in a channel is
+created from one of them and may override the filters
+([`docs/ROOST.md`](../docs/ROOST.md) section 4). The last four are
+**roost-only breeds**: nobody spawns them by hand. They are stateless and
+short-lived: the channel history is their memory, and they call `chat_done`
+and stop when their pass is over.
 
 ## Schema (`formations/v1alpha1`)
 
@@ -32,26 +45,27 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `name`, `description`, `status` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
 | `pod` | 1. pod specification | `resources.requests`, `resources.limits` (Kubernetes quantities), `workspace_size` |
 | `os` | 2. OS-level permissions | `user`, `sudo`, `root_filesystem`, `writable_paths`, `tmp_size`, `network.egress` (`none`, `allowlist`), `network.allow` (domains) |
-| `skills` | 3. skills | list of `{source, ref, path, license, review}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit |
-| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{base}` (branch pull requests target: default branch, or the flock's integration branch), `{repo}` |
-| `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`) |
+| `skills` | 3. skills | list of `{source, ref, path, license, review, name?}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit; optional `name` is the install directory (`^[a-z0-9][a-z0-9._-]{0,63}$`), defaulting to the last segment of `path` |
+| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` |
+| `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`). The image carries no project toolchain: a repository declares its tools in `mise.toml` and flokpit installs them at boot; the tasks a project provides per breed are in [`docs/FLOKPIT_PROJECT_COMPAT.md`](../docs/FLOKPIT_PROJECT_COMPAT.md) |
 | `model` | 6. model choice | `class` (`frontier`, `balanced`, `fast`), `effort`, `overridable`, `candidates` (ordered list of `{provider, id, effort?}`; see below) |
 | `limits` | 7. limits and budgets | `max_turns`, `max_budget_usd` (0 = no cap), `summary_budget_usd`, `tighten_only` |
 | `lifecycle` | 8. lifecycle | `hello`, `idle_timeout`, `max_lifetime`, `summary_deadline` |
-| `tools` | 9. tool permissions | category → pattern → `allow` or `deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents`; `deny` wins over `allow`, and anything not allowed is denied (agents run without prompts); `{branch}` in a pattern is the agent's branch |
+| `tools` | 9. tool permissions | category → pattern → `allow` or `deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents`; `deny` wins over `allow`, and anything not allowed is denied (agents run without prompts; the rules are a guardrail for a cooperative agent, not a sandbox, because an allowed interpreter such as `node *` can do anything; the real boundaries are the network policy, the pod and the token scopes, and the local driver has none); `{branch}` in a pattern is the agent's branch |
 | `privileges` | 10. spawn and chat | `may_spawn` (breed names), `chat.mode` (`voice` = `+v`), `chat.op` |
-| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`_base` grants the read scopes `issues`, `pull_requests`, `checks`, `actions`; lists replace, so a breed repeats what it keeps); what the breed must deliver when done |
+| `roosts` | 11. preconfigured roosts | required; list of `{name, description, filter, task, max_concurrent?, cooldown?}` (empty for a breed that is never roosted); `filter` is a filter expression (`event_name_filter`, `event_detail_filter`) over [`events/catalogue.yaml`](../events/catalogue.yaml), `task` a template with `{<detail key>}` placeholders; a roost instance is created from one entry (its preset) and may override the filters; the validator checks that every filter names declared events and filterable details ([`docs/ROOST.md`](../docs/ROOST.md) sections 3, 4 and 8) |
+| `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`contents:write-integration-branch` allows pushing to a formation's `integration_branch`, never the default branch); what the breed must deliver when done |
 
 ## Permission design
 
 Breeds were checked against concrete use cases in
-[`docs/USECASES.md`](../docs/USECASES.md). The principle that came out of it:
-interpreter allows (`python3 *`, `npx *`, `make *`) are as wide as a shell, so
-the real boundaries are the pod, the egress allowlist and the gateway-held
-credentials. Allow generously what those already contain; keep hard `deny`
-rules for what a credential could do (default-branch pushes, merges, deletes).
-Lists replace in the merge, so a breed that sets `os.network.allow` or
-`credentials.github` repeats the base entries it still needs.
+[`docs/USECASES.md`](../docs/USECASES.md). Allowed interpreters (`python3 *`,
+`npx *`, `make *`) are as wide as a shell, so the real boundaries are the pod,
+the egress allowlist and the gateway-held credentials. Allow generously what
+those already contain; keep hard `deny` rules for what a credential could do
+(default-branch pushes, merges, deletes). Lists replace in the merge, so a
+breed that sets `os.network.allow` or `credentials.github` repeats the base
+entries it still needs.
 
 `tighten_only: true` means a spawned agent's limits and tools can only be
 narrowed by `/spawn` arguments or a formation, never widened (flokpit already

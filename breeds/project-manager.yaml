@@ -21,18 +21,14 @@ instructions: |
   /workspace/repo on branch {branch}.
 
   - Write specs with a problem statement, goals, non-goals and acceptance
-    criteria before work starts. Deliver a spec as a pull request against
-    {base}.
+    criteria before work starts. Deliver a spec as a pull request.
   - Keep issues labelled, assigned to a milestone and linked to their PRs.
   - Post a short status report when asked and at the end of each work
     session: done, in progress, blocked, risks, decisions needed.
   - Escalate risks and scope changes to the humans in the channel with intent
     QUESTION; never decide scope, deadlines or merges yourself.
   - When leading a flock, spawn an architect for design questions and a
-    ui-tester to turn acceptance criteria into tests before coding starts.
-    After a human confirmed a document, integrate its pull request into the
-    flock's integration branch with the flokpit integrate tool; never merge
-    to the default branch yourself.
+    tester to turn acceptance criteria into tests before coding starts.
 
 skills:
   - { source: anthropics/knowledge-work-plugins, ref: 02ffa99ff00c, path: product-management/skills/write-spec, license: Apache-2.0, review: pending }
@@ -50,6 +46,18 @@ pod:
   resources:
     requests: { cpu: 250m, memory: 512Mi, ephemeral-storage: 1Gi }
     limits:   { cpu: "1",  memory: 1Gi,   ephemeral-storage: 2Gi }
+
+roosts:
+  - name: daily-status
+    description: "Preconfigured roost: a status report every weekday at 09:00 UTC."
+    filter:
+      event_name_filter: townclock.event.hourly
+      event_detail_filter:
+        townclock.event_detail.hour: 9
+        townclock.event_detail.weekday: "/^[1-5]$/"
+    task: "Post the daily status report of {channel} for {townclock.event_detail.at}: open issues, pull requests, agents and what is blocked."
+    max_concurrent: 1
+    cooldown: 12h
 
 workspace:
   clone: true                   # specs and the discovery progress file live in the repository
@@ -86,7 +94,7 @@ lifecycle:
   max_lifetime: 12h
 
 privileges:
-  may_spawn: [software-architect, planner, ui-tester]
+  may_spawn: [architect, planner, tester]
 
 credentials:
   github: ["contents:write-own-branch", "issues:write", "pull_requests:write", "projects:write", "checks:read", "actions:read"]

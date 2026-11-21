@@ -61,8 +61,8 @@ Research date 2026-10-12. Details and sources are on the linked pages.
 | Breed | Primary skills |
 |---|---|
 | developer | superpowers or mattpocock (choose one process set): test-driven-development, systematic-debugging, executing-plans, verification-before-completion, requesting-code-review, finishing-a-development-branch; vendor packs for the project's stack |
-| ui-tester | anthropics webapp-testing, microsoft playwright-cli, vercel agent-browser, chrome-devtools and a11y-debugging, web-design-guidelines; image with Playwright and Chromium |
-| software-architect | knowledge-work-plugins architecture and system-design, wshobson ADRs, architecture-patterns, api-design-principles and STRIDE, softaworks c4-architecture and mermaid-diagrams, Trail of Bits audit-context-building |
+| tester | anthropics webapp-testing, microsoft playwright-cli, vercel agent-browser, chrome-devtools and a11y-debugging, web-design-guidelines; image with Playwright and Chromium |
+| architect | knowledge-work-plugins architecture and system-design, wshobson ADRs, architecture-patterns, api-design-principles and STRIDE, softaworks c4-architecture and mermaid-diagrams, Trail of Bits audit-context-building |
 | project-manager | GitHub or Linear or Atlassian with token auth, knowledge-work-plugins product-management (write-spec, sprint-planning, stakeholder-update), operations status-report, anthropics internal-comms |
 | reviewer | superpowers receiving-code-review and verification-before-completion, Trail of Bits differential-review, Sentry code-review and security-review, official pr-review-toolkit |
 | planner | superpowers writing-plans, dispatching-parallel-agents, brainstorming (non-interactive) |
@@ -78,7 +78,7 @@ Breed](/skills/skills-by-breed.md).[^breeds]
   `flokpit-agentd`. Never install from a registry at pod runtime.
 - **Skills drive image variants.** Browser skills need Playwright and
   Chromium; diagram rendering needs Chromium; CodeQL is large. Only the
-  ui-tester image should carry a browser.
+  tester image should carry a browser.
 - **Interactive skills need a channel.** Skills that ask the user questions
   must ask in the flokpit channel (intent `QUESTION`) or run without asking.
 - **OAuth-only integrations do not work in pods.** Use token-based MCP

@@ -1,6 +1,6 @@
 apiVersion: formations/v1alpha1
 kind: Breed
-name: ui-tester
+name: tester
 description: Tests web UIs in a headless browser, writes end-to-end tests, audits accessibility and reports failures with screenshots.
 status: proposal
 extends: _base
@@ -19,6 +19,15 @@ instructions: |
   branch {branch}.
 
   - Start the application locally and test it in a headless browser only.
+    With a mise configuration use its tasks: `mise run start` (or `mise run
+    dev-server`) runs the app on $PORT, `mise run ui-test [path]` starts it if
+    needed and opens a headless browser session with a screenshot and an
+    accessibility snapshot that you continue with `agent-browser ...`, `mise
+    run e2e` runs the end-to-end tests, `mise run ui-test:stop` ends the
+    session. Without mise, use the start command the project's AGENTS.md or
+    CLAUDE.md names, `npx playwright test` and `agent-browser` directly. One
+    plain command per call, no `&&` or `;`. If the app or the browser cannot
+    run here, post BLOCKED to the lead and stay available; do not post DONE.
   - Test the user flows you are asked about, then edge cases: empty states,
     errors, slow responses, keyboard-only use, small screens.
   - Check accessibility (WCAG 2.2 AA) on every page you touch.
@@ -33,6 +42,8 @@ instructions: |
     disappears with the pod.
   - Report failures with steps to reproduce, expected and actual behaviour
     and a link to the screenshot; post BLOCKED if the app does not start.
+  - When told to pull a fix, pull the flock's integration branch, re-test the
+    reported flow and report the result in the channel.
 
 skills:
   - { source: anthropics/skills, ref: dbd4588f9e10, path: skills/webapp-testing, license: Apache-2.0, review: pending }
@@ -74,14 +85,22 @@ tools:
     "git add -A*": deny                     # stage named files only
     "git add .": deny
     "git commit*": allow
+    "git fetch*": allow
+    "git pull*": allow
+    "git checkout *": allow
     "git push origin {branch}*": allow
     "gh pr create*": allow
     "gh pr comment*": allow
-    "curl *": allow                         # replaces the _base deny: health checks on localhost; egress proxy is the boundary
+    "bun *": allow
     "sleep *": allow
     "kill *": allow
     "make *": allow
     "uv *": allow
+    "gh issue view*": allow
+    "gh pr view*": allow
+    "mise run *": allow
+    "mise install*": allow
+    "curl *": allow             # overrides the _base deny; egress is limited to localhost and the registries
     "npm *": allow
     "npx *": allow
     "pnpm *": allow
@@ -95,6 +114,17 @@ limits:
 
 lifecycle:
   hello: "Hi! My name is {nick}. I test UIs in a headless browser. What should I test?"
+
+roosts:
+  - name: pr-opened-or-updated
+    description: "Preconfigured roost: the end-to-end tests run against every opened or updated pull request."
+    filter:
+      event_name_filter: [github.event.pull_request_opened, github.event.pull_request_updated]
+      event_detail_filter:
+        github.event_detail.draft: false
+    task: "Run the end-to-end tests against pull request #{github.event_detail.number} ({github.event_detail.head_ref}) of {github.event_detail.repo}: {github.event_detail.url}"
+    max_concurrent: 1
+    cooldown: 5m
 
 credentials:
   github: ["contents:write-own-branch", "pull_requests:write", "issues:read", "checks:read"]

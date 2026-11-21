@@ -1,0 +1,243 @@
+# Every event flokpit can emit. An event that is not declared here cannot be
+# listened to: flokpit validates a roost's event_name_filter and
+# event_detail_filter against the catalogue pinned with the breeds
+# (docs/ROOST.md sections 3 and 8). Names are <source>.event.<name>, detail
+# keys <source>.event_detail.<key>. A filter pattern is an exact value, a glob
+# with * and ?, a regex between slashes ("/^[1-5]$/") or a list of those
+# (any of). Details with filterable: false (URLs, shas, costs) cannot be
+# filtered on. Add an event here first, then emit it.
+apiVersion: formations/v1alpha1
+kind: EventCatalogue
+
+sources:
+  townclock:
+    description: The built-in clock of flokpit. Ticks are UTC; a listener filters on the detail keys (minute, hour, weekday, day) to get cron-like behaviour.
+    origin: internal
+    scope: org
+  agent:
+    description: Lifecycle of a single agent, emitted by the channel workflow the agent belongs to.
+    origin: internal
+    scope: channel
+  flock:
+    description: Lifecycle of a flock (a running formation), emitted by the channel workflow it flies in.
+    origin: internal
+    scope: channel
+  provider:
+    description: Provider account events of the humans of an org (token rotation, budget), emitted by flokpit-server.
+    origin: internal
+    scope: org
+  github:
+    description: GitHub webhook deliveries of the org's repositories, received by flokpit-server and verified with the org's webhook secret.
+    origin: external
+    scope: org
+
+events:
+  # --- townclock -----------------------------------------------------------
+  - name: townclock.event.minutely
+    source: townclock
+    since: v0.4.0
+    description: Fires once per minute at second 0 (UTC). Filter on minute, hour and weekday for cron-like schedules.
+    details:
+      townclock.event_detail.at:      { type: string,  description: "ISO 8601 timestamp of the tick (UTC)", filterable: false }
+      townclock.event_detail.minute:  { type: integer, description: "Minute of the hour", min: 0, max: 59 }
+      townclock.event_detail.hour:    { type: integer, description: "Hour of the day (UTC)", min: 0, max: 23 }
+      townclock.event_detail.weekday: { type: integer, description: "ISO weekday, 1 = Monday ... 7 = Sunday", min: 1, max: 7 }
+      townclock.event_detail.day:     { type: integer, description: "Day of the month", min: 1, max: 31 }
+      townclock.event_detail.month:   { type: integer, description: "Month", min: 1, max: 12 }
+  - name: townclock.event.hourly
+    source: townclock
+    since: v0.4.0
+    description: Fires at minute 0 of every hour (UTC).
+    details:
+      townclock.event_detail.at:      { type: string,  description: "ISO 8601 timestamp of the tick (UTC)", filterable: false }
+      townclock.event_detail.hour:    { type: integer, description: "Hour of the day (UTC)", min: 0, max: 23 }
+      townclock.event_detail.weekday: { type: integer, description: "ISO weekday, 1 = Monday ... 7 = Sunday", min: 1, max: 7 }
+      townclock.event_detail.day:     { type: integer, description: "Day of the month", min: 1, max: 31 }
+      townclock.event_detail.month:   { type: integer, description: "Month", min: 1, max: 12 }
+  - name: townclock.event.daily
+    source: townclock
+    since: v0.4.0
+    description: Fires at 00:00 UTC every day.
+    details:
+      townclock.event_detail.at:      { type: string,  description: "ISO 8601 timestamp of the tick (UTC)", filterable: false }
+      townclock.event_detail.weekday: { type: integer, description: "ISO weekday, 1 = Monday ... 7 = Sunday", min: 1, max: 7 }
+      townclock.event_detail.day:     { type: integer, description: "Day of the month", min: 1, max: 31 }
+      townclock.event_detail.month:   { type: integer, description: "Month", min: 1, max: 12 }
+  - name: townclock.event.weekly
+    source: townclock
+    since: v0.4.0
+    description: Fires at 00:00 UTC every Monday.
+    details:
+      townclock.event_detail.at:      { type: string,  description: "ISO 8601 timestamp of the tick (UTC)", filterable: false }
+      townclock.event_detail.week:    { type: integer, description: "ISO week number", min: 1, max: 53 }
+      townclock.event_detail.month:   { type: integer, description: "Month", min: 1, max: 12 }
+
+  # --- agent ---------------------------------------------------------------
+  - name: agent.event.spawned
+    source: agent
+    since: v0.4.0
+    description: An agent was spawned in the channel and its workflow started (before the pod is ready).
+    details:
+      agent.event_detail.nick:      { type: string, description: "Nick of the new agent" }
+      agent.event_detail.breed:     { type: string, description: "Breed name" }
+      agent.event_detail.channel:   { type: string, description: "Channel the agent was spawned in, \"#name\"" }
+      agent.event_detail.by:        { type: string, description: "Who typed or caused the spawn, a user login or an agent nick" }
+      agent.event_detail.spawner:   { type: string, description: "The human at the root of the spawn chain (owner of provider account and git token)" }
+      agent.event_detail.flock:     { type: string, description: "Flock name when the agent is a flock member", nullable: true }
+      agent.event_detail.caused_by: { type: string, description: "Nick of the agent whose action produced this event", nullable: true }
+  - name: agent.event.killed
+    source: agent
+    since: v0.4.0
+    description: An agent's workflow ended for any reason.
+    details:
+      agent.event_detail.nick:      { type: string,  description: "Nick of the agent" }
+      agent.event_detail.breed:     { type: string,  description: "Breed name" }
+      agent.event_detail.channel:   { type: string,  description: "Channel the agent belonged to, \"#name\"" }
+      agent.event_detail.reason:    { type: string,  description: "Why it ended; exhausted = shut down because its provider account ran out of tokens", enum: [killed, crashed, limits, exhausted, landed, summary_timeout] }
+      agent.event_detail.turns:     { type: integer, description: "Turns the agent ran", min: 0, filterable: false }
+      agent.event_detail.spent_usd: { type: number,  description: "Cost attributed to the agent", min: 0, filterable: false }
+      agent.event_detail.flock:     { type: string,  description: "Flock name when the agent was a flock member", nullable: true }
+      agent.event_detail.caused_by: { type: string,  description: "Nick of the agent that killed it", nullable: true }
+
+  # --- flock ---------------------------------------------------------------
+  - name: flock.event.flown
+    source: flock
+    since: v0.4.0
+    description: A formation took off (/fly succeeded, lead and first wave are spawned).
+    details:
+      flock.event_detail.flock:     { type: string, description: "Flock name" }
+      flock.event_detail.formation: { type: string, description: "Formation name" }
+      flock.event_detail.channel:   { type: string, description: "Channel the flock flies in, \"#name\"" }
+      flock.event_detail.lead:      { type: string, description: "Nick of the lead" }
+      flock.event_detail.by:        { type: string, description: "Who typed or caused /fly" }
+      flock.event_detail.caused_by: { type: string, description: "Nick of the agent whose action produced this event", nullable: true }
+  - name: flock.event.landed
+    source: flock
+    since: v0.4.0
+    description: A flock ended (/land, termination condition, limits or failure).
+    details:
+      flock.event_detail.flock:     { type: string, description: "Flock name" }
+      flock.event_detail.formation: { type: string, description: "Formation name" }
+      flock.event_detail.channel:   { type: string, description: "Channel the flock flew in, \"#name\"" }
+      flock.event_detail.reason:    { type: string, description: "Why it landed", enum: [landed, terminated, limits, failed] }
+      flock.event_detail.caused_by: { type: string, description: "Nick of the agent that landed it", nullable: true }
+
+  # --- provider ------------------------------------------------------------
+  - name: provider.event.budget_exhausted
+    source: provider
+    since: v0.4.0
+    description: A provider account ran out of budget; turns of agents on this account fail until it resets. budget = tokens is the provider's rate limit (subscription usage window or API rate limit), budget = usd the account's optional monthly budget_usd. Emitted once per exhaustion, not per failed turn.
+    details:
+      provider.event_detail.account:    { type: string, description: "Account name as the owner sees it" }
+      provider.event_detail.kind:       { type: string, description: "Account kind", enum: [api_key, subscription] }
+      provider.event_detail.owner:      { type: string, description: "Login of the human who owns the account" }
+      provider.event_detail.budget:     { type: string, description: "Which budget ran out", enum: [tokens, usd] }
+      provider.event_detail.budget_usd: { type: number, description: "The monthly budget that was reached (budget = usd)", min: 0, nullable: true, filterable: false }
+      provider.event_detail.resets_at:  { type: string, description: "ISO 8601 time the budget is expected to reset: from the provider's headers (tokens) or the month rollover (usd)", nullable: true, filterable: false }
+      provider.event_detail.agents:     { type: "string[]", description: "Nicks of the agents of the org that were running on the account" }
+  - name: provider.event.budget_reset
+    source: provider
+    since: v0.4.0
+    description: The budget of a provider account is available again after a budget_exhausted event (rate limit window reset or OAuth token rotated for budget = tokens, month rollover or a raised budget_usd for budget = usd); agents on the account can run again.
+    details:
+      provider.event_detail.account:      { type: string, description: "Account name as the owner sees it" }
+      provider.event_detail.kind:         { type: string, description: "Account kind", enum: [api_key, subscription] }
+      provider.event_detail.owner:        { type: string, description: "Login of the human who owns the account" }
+      provider.event_detail.budget:       { type: string, description: "Which budget came back", enum: [tokens, usd] }
+      provider.event_detail.exhausted_at: { type: string, description: "ISO 8601 time of the budget_exhausted event this reset ends", filterable: false }
+      provider.event_detail.agents:       { type: "string[]", description: "Nicks of the agents that were interrupted (alive or shut down) since the exhaustion" }
+
+  # --- github --------------------------------------------------------------
+  - name: github.event.issue_opened
+    source: github
+    since: v0.4.0
+    description: An issue was opened in a repository of the org.
+    details:
+      github.event_detail.repo:        { type: string,   description: 'Repository "owner/name" '}
+      github.event_detail.number:      { type: integer,  description: "Issue number", min: 1 }
+      github.event_detail.title:       { type: string,   description: "Issue title", filterable: false }
+      github.event_detail.author:      { type: string,   description: "GitHub login of the author" }
+      github.event_detail.labels:      { type: "string[]", description: "Label names at the time of the event" }
+      github.event_detail.url:         { type: string,   description: "HTML URL of the issue", filterable: false }
+      github.event_detail.delivery_id: { type: string,   description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.issue_labeled
+    source: github
+    since: v0.4.0
+    description: A label was added to an issue.
+    details:
+      github.event_detail.repo:        { type: string,   description: 'Repository "owner/name" '}
+      github.event_detail.number:      { type: integer,  description: "Issue number", min: 1 }
+      github.event_detail.title:       { type: string,   description: "Issue title", filterable: false }
+      github.event_detail.label:       { type: string,   description: "The label that was added" }
+      github.event_detail.labels:      { type: "string[]", description: "All label names after the change" }
+      github.event_detail.author:      { type: string,   description: "GitHub login of the issue author" }
+      github.event_detail.url:         { type: string,   description: "HTML URL of the issue", filterable: false }
+      github.event_detail.delivery_id: { type: string,   description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.pull_request_opened
+    source: github
+    since: v0.4.0
+    description: A pull request was opened or marked ready for review.
+    details:
+      github.event_detail.repo:        { type: string,  description: 'Repository "owner/name" '}
+      github.event_detail.number:      { type: integer, description: "Pull request number", min: 1 }
+      github.event_detail.title:       { type: string,  description: "Pull request title", filterable: false }
+      github.event_detail.author:      { type: string,  description: "GitHub login of the author" }
+      github.event_detail.head_ref:    { type: string,  description: "Source branch" }
+      github.event_detail.base_ref:    { type: string,  description: "Target branch" }
+      github.event_detail.draft:       { type: boolean, description: "Whether the pull request is a draft" }
+      github.event_detail.url:         { type: string,  description: "HTML URL of the pull request", filterable: false }
+      github.event_detail.delivery_id: { type: string,  description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.pull_request_updated
+    source: github
+    since: v0.4.0
+    description: New commits were pushed to the head branch of an open pull request (GitHub action "synchronize").
+    details:
+      github.event_detail.repo:        { type: string,  description: "Repository \"owner/name\"" }
+      github.event_detail.number:      { type: integer, description: "Pull request number", min: 1 }
+      github.event_detail.title:       { type: string,  description: "Pull request title", filterable: false }
+      github.event_detail.author:      { type: string,  description: "GitHub login of the author" }
+      github.event_detail.head_ref:    { type: string,  description: "Source branch" }
+      github.event_detail.base_ref:    { type: string,  description: "Target branch" }
+      github.event_detail.draft:       { type: boolean, description: "Whether the pull request is a draft" }
+      github.event_detail.head_sha:    { type: string,  description: "New head commit", filterable: false }
+      github.event_detail.url:         { type: string,  description: "HTML URL of the pull request", filterable: false }
+      github.event_detail.delivery_id: { type: string,  description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.pull_request_review_submitted
+    source: github
+    since: v0.4.0
+    description: A review was submitted on a pull request.
+    details:
+      github.event_detail.repo:        { type: string,  description: 'Repository "owner/name" '}
+      github.event_detail.number:      { type: integer, description: "Pull request number", min: 1 }
+      github.event_detail.state:       { type: string,  description: "Review state", enum: [approved, changes_requested, commented] }
+      github.event_detail.reviewer:    { type: string,  description: "GitHub login of the reviewer" }
+      github.event_detail.author:      { type: string,  description: "GitHub login of the pull request author" }
+      github.event_detail.head_ref:    { type: string,  description: "Source branch of the pull request" }
+      github.event_detail.url:         { type: string,  description: "HTML URL of the review", filterable: false }
+      github.event_detail.delivery_id: { type: string,  description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.push
+    source: github
+    since: v0.4.0
+    description: Commits were pushed to a branch or a tag was pushed.
+    details:
+      github.event_detail.repo:        { type: string,  description: 'Repository "owner/name" '}
+      github.event_detail.ref:         { type: string,  description: "Full ref, \"refs/heads/main\" or \"refs/tags/v1.0.0\"" }
+      github.event_detail.branch:      { type: string,  description: "Branch name without the refs/heads/ prefix", nullable: true }
+      github.event_detail.pusher:      { type: string,  description: "GitHub login of the pusher" }
+      github.event_detail.before:      { type: string,  description: "Commit sha before the push", filterable: false }
+      github.event_detail.after:       { type: string,  description: "Commit sha after the push", filterable: false }
+      github.event_detail.commits:     { type: integer, description: "Number of commits in the push", min: 0, filterable: false }
+      github.event_detail.delivery_id: { type: string,  description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.workflow_run_failed
+    source: github
+    since: v0.4.0
+    description: A GitHub Actions workflow run completed with a failure.
+    details:
+      github.event_detail.repo:        { type: string, description: 'Repository "owner/name" '}
+      github.event_detail.workflow:    { type: string, description: "Workflow name as in the YAML" }
+      github.event_detail.run_id:      { type: integer, description: "Run id", min: 1, filterable: false }
+      github.event_detail.head_branch: { type: string, description: "Branch the run was for" }
+      github.event_detail.head_sha:    { type: string, description: "Commit the run was for", filterable: false }
+      github.event_detail.actor:       { type: string, description: "GitHub login that triggered the run" }
+      github.event_detail.url:         { type: string, description: "HTML URL of the run", filterable: false }
+      github.event_detail.delivery_id: { type: string, description: "GitHub webhook delivery id (dedupe key)", filterable: false }

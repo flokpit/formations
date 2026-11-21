@@ -77,7 +77,7 @@ All paths below are in `flokpit/formations` unless prefixed with `flokpit:`.
 | Breed files | `breeds/*.yaml` | the content flokpit loads; `_base.yaml` holds shared defaults |
 | Breed documentation | `breeds/README.md` | field meaning, merge rule, model selection |
 | Breed schema | `specs/breed.schema.json` (JSON Schema 2020-12, `$id` `https://github.com/flokpit/formations/specs/breed.schema.json`) | contract; `$defs/resolved` describes a merged, complete breed |
-| Formation files | `formations/*.yaml` | three proposals: `feature-team`, `bug-sweep`, `product-discovery` |
+| Formation files | `formations/*.yaml` | four proposals: `feature-team`, `bug-sweep`, `product-discovery`, `ui-bugfixing` |
 | Formation documentation | `formations/README.md` | field meaning, tighten-only rules |
 | Formation schema | `specs/formation.schema.json` | contract; references breed `$defs` |
 | Reference validator | `scripts/validate.py` (`uv run scripts/validate.py [FILE...]`) | schema checks plus cross-file rules; the behaviour flokpit's loader must match |
@@ -106,7 +106,7 @@ keep a diverging copy of them (see X-2).
 | `tools` | category → pattern → `allow`/`deny`; categories `read`, `edit`, `bash`, `webfetch`, `websearch`, `mcp`, `subagents` | `tools.allow`, `tools.deny` (Claude rule strings) |
 | `privileges` | `may_spawn`, `chat.mode`, `chat.op` | `may_spawn` |
 | `workspace` | `clone`, `branch_prefix` | `workspace.clone`, `workspace.branch_prefix` |
-| `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch` | – (gateway decides today) |
+| `credentials.github` | requested GitHub scopes, e.g. `contents:write-own-branch`; `contents:write-integration-branch` lets a developer push to the flock's `integration_branch`, never the default branch | – (gateway decides today) |
 | `handoff` | `done`, `next` | – |
 
 Merge rule: maps merge recursively, lists and scalars replace. A breed's
@@ -118,28 +118,34 @@ Sections: `lead {breed, op, overrides}`, `members[] {breed, count {min, max},
 start: with_flock|on_demand, overrides}`, `spawn_tree`, `work_split`,
 `handoffs`, `state`, `verification`, `termination {conditions, summary}`,
 `limits {max_agents, max_lifetime, max_budget_usd, turn_budget}`, `channel`,
-`escalate_to_human`, `kickoff`. `state` may name an `integration_branch`
-(5.9). Placeholders `{flock}`, `{task}`, `{repo}`, `{spawner}`. Details:
-`formations/README.md`.
-
-Breed instructions and tool patterns also know `{base}`: the branch an agent's
-pull requests target. It is the repository's default branch, or the flock's
-integration branch for members of a flock whose formation sets one; agentd
-also clones that branch.
+`escalate_to_human`, `kickoff`. Placeholders `{flock}`, `{task}`, `{repo}`,
+`{spawner}`. Details: `formations/README.md`.
 
 ## 5. Technical concept
 
 ### 5.1 Getting the files into flokpit
 
-Recommended: pin `flokpit/formations` as a **git submodule** at
-`flokpit:vendor/formations` (a commit, never a branch). flokpit reads
-`vendor/formations/breeds` locally and ships it in the `roles` ConfigMap (or a
-new `breeds` ConfigMap) in the cluster, as it does with roles today.
-`FLOKPIT_BREEDS_DIR` configures the path like `FLOKPIT_ROLES_DIR`.
+Decided (`docs/decisions/001-contract-delivery-to-flokpit.md` decision 3,
+`docs/decisions/002-release-channel.md`): the delivery path is the **published
+artifact**, and the artifact is a **GitHub release** of `flokpit/formations`
+with a human-cut tag (`v0.1.0`, `v0.2.0`, ...). flokpit pins the tag in its
+configuration and fetches
 
-Alternative: a CI job in `flokpit/formations` publishes a versioned tarball
-or OCI artifact. Choose it only if submodules cause trouble; the requirements
-below hold either way.
+```
+https://github.com/flokpit/formations/releases/download/<tag>/formations-<tag>.tar.gz
+```
+
+with no credentials, verifies it against the `.sha256` published next to it,
+extracts it, validates the breeds against the `specs/*.schema.json` from that
+same archive and ships them in the `roles` ConfigMap (or a new `breeds`
+ConfigMap) in the cluster, as it does with roles today. `FLOKPIT_BREEDS_DIR`
+configures the extracted path like `FLOKPIT_ROLES_DIR`.
+
+Previous channel, removed (the storage zone is deleted): the bunny.net storage key
+`<short sha>.tar.gz` with its `LATEST` pointer. A git submodule at
+`flokpit:vendor/formations` (a commit, never a branch) stays a valid fallback
+if release downloads ever cause trouble; the requirements below hold either
+way.
 
 ### 5.2 Loading and resolving breeds (phase 1)
 
@@ -255,9 +261,16 @@ design. Delivery path:
 
 - `runtime.image` selects an image variant built `FROM` the agent image
   (`packages/spawner/image/Dockerfile`). Dev Container Features listed in
-  `runtime.features` are installed at image build time, not at boot. The
-  `ui-tester` breed needs a `browser` variant with Chromium and a
-  `local:features/playwright` feature that does not exist yet.
+  `runtime.features` are an image build input, not a boot-time setting; flokpit
+  does not render them today. The image holds no project toolchain: a
+  repository declares its tools in `mise.toml` and `flokpit-agentd` runs
+  `mise install` in the checkout at boot, then hands `mise env` (tool PATH,
+  the project's `[env]`) to the agent. Breeds therefore run a project through
+  its mise tasks first (`mise run check`, `test-suite`, `start`, `e2e`,
+  `ui-test`) and fall back to the project's AGENTS.md or CLAUDE.md without
+  one; the task contract is `docs/FLOKPIT_PROJECT_COMPAT.md`. The `tester`
+  breed needs the `browser` variant, which bakes only Chromium and its
+  libraries for one pinned Playwright release.
 - `os` is enforced by the pod, not by Claude Code: non-root user, no `sudo`
   binary, read-only root filesystem with emptyDirs for `writable_paths`,
   `tmp_size` as emptyDir `sizeLimit`, `/dev/shm` as a memory emptyDir when
@@ -278,17 +291,17 @@ design. Delivery path:
   repositories. The gateway grants them read-only. `contents:write-own-branch`
   stays limited to the agent's own branch.
 - Breeds that review must act under a different GitHub identity than the
-  breeds whose work they review (F-9); otherwise GitHub refuses the approval.
+  breeds whose work they review (F-8); otherwise GitHub refuses the approval.
 - `workspace.clone: false` means no checkout; agentd starts in an empty
-  `/workspace`. No shipped breed uses it any more: the project-manager writes
-  specs and progress files into the repository.
+  `/workspace`. Only the event breeds (watchdog, resumer) use it; the
+  project-manager clones the repository to write specs and progress files.
 - `handoff.done` is appended to the system prompt as "When you are done:
   …"; `handoff.next` is informational in phase 1–2 and used by formations.
 
 ### 5.9 Formations (phase 3)
 
-**Start.** `/fly <formation> [--repo url] [--task "..."]` (alias `/spawn
---formation <name>`), REST and WS equivalents, ops only. flokpit:
+**Start.** `/fly <formation> [--repo url] [--task "..."]` (deprecated alias
+`/spawn --formation <name>`), REST and WS equivalents, ops only. flokpit:
 
 1. validates the formation (4.2, F-1 to F-4) and the caller's rights;
 2. creates the flock channel if `channel.create` (name from `channel.name`
@@ -319,22 +332,8 @@ id `flock:<org>:<flock>`) owns the flock state:
   `DONE` and confirmed by a human op. On termination: summary request to the
   lead, graceful kill of all members, lead posts `termination.summary`, then
   the lead is killed.
-- **Integration branch.** If `state.integration_branch` is set, flokpit
-  creates it from the default branch at flock start and clones members from
-  it; their pull requests target it (`{base}`). The lead integrates a pull
-  request through a flokpit MCP tool (proposed name `flock_integrate`;
-  `flokpit/*` is already allowed in every breed) that checks, server-side,
-  that the PR's base is the integration branch, that it has an approval from
-  an agent other than its author, and that its checks are green. Every
-  breed keeps `gh pr merge*` denied, so no member can merge by shell, and
-  nothing can merge into the default branch (F-5); the lead opens one pull
-  request from the integration branch to the default branch and a human merges
-  it.
 - **Escalation** is prompt-level: the lead is instructed to ask with intent
   `QUESTION`; merges are additionally blocked by tool permissions.
-
-The vocabulary (`/fly`, `/land`) is a proposal; agree on it before
-implementing.
 
 ## 6. Implementation plan
 
@@ -355,17 +354,17 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 
 | Id | Requirement |
 |---|---|
-| B-1 | flokpit MUST load breeds from a pinned commit of `flokpit/formations`; it MUST NOT follow a branch at runtime. |
+| B-1 | flokpit MUST load breeds from a pinned release of `flokpit/formations` (5.1), identified by its tag and verified against a configured sha256 of the release archive (the digest pins; the tag only names it); it MUST NOT resolve a branch, a moving tag, `releases/latest` or the removed bunny.net `LATEST` pointer at runtime. |
 | B-2 | Every breed file MUST validate against `specs/breed.schema.json`, and every resolved breed against `#/$defs/resolved`. An invalid breed MUST NOT be spawnable; flokpit MUST report it at startup (like `loadRoles` errors today) and keep serving the valid ones. |
 | B-3 | Resolution MUST use the merge rule of 4.1 exactly (maps merge, lists and scalars replace). |
 | B-4 | The rendered `Role` MUST pass the existing strict `Role` schema and the agentd `RoleSpec` parity test. |
-| B-5 | Tool rendering MUST follow 5.4: deny beats allow, unlisted means denied, absolute paths use `//`, `{branch}` and `{base}` rendered per agent. |
+| B-5 | Tool rendering MUST follow 5.4: deny beats allow, unlisted means denied, absolute paths use `//`, `{branch}` rendered per agent. |
 | B-6 | `/spawn <breed>` arguments and formations MUST only narrow a breed (limits lower, tools fewer, spawn rights fewer); flokpit already enforces this for `/spawn`. |
 | B-7 | `privileges.may_spawn` MUST replace `Role.may_spawn` in `maySpawn()` with unchanged semantics (humans unrestricted). |
 | B-8 | User-facing text MUST say "breed"; the API SHOULD accept `role` as a deprecated alias for one release. |
 | B-9 | The smoke test's `hello` agent (runtime `echo`) MUST keep working: either keep `hello.yaml` as a role, or add an optional `runtime` to the breed schema in `flokpit/formations` first. |
-| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them; a breed and a role with the same name MUST NOT coexist. |
-| B-11 | Name mapping MUST be explicit: today `architect` and `tester` correspond to the breeds `software-architect` and `ui-tester`. Decide in phase 0 whether flokpit renames or the breeds are renamed; do not alias silently. |
+| B-10 | Existing roles without a breed (`consultant`, `designer`, `devops`, `hello`) MUST stay available until a breed replaces them. A breed and a role with the same name MAY coexist: the breed wins, and flokpit MUST log the shadowing once per load. |
+| B-11 | Name mapping MUST be explicit and MUST NOT be aliased silently. Decided in phase 0 (decision 6): the breeds are renamed, `architect` to `architect` and `tester` to `tester`, and flokpit keeps its role names `architect` and `tester`. The resulting name clash is resolved by B-10 (the breed wins). |
 
 ### 7.2 Models
 
@@ -398,8 +397,7 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | F-5 | Merges to the default branch MUST NOT be possible for any flock member (tool permissions), regardless of what the formation text says. |
 | F-6 | Flock state (members, counts, termination reason) SHOULD be visible in the UI's channel overview and via a query on `FlockWorkflow`. |
 | F-7 | The lead's kickoff text SHOULD be built from the formation sections, not hand-written per formation. |
-| F-8 | With `state.integration_branch`, flokpit MUST create the branch, point members' clones and `{base}` at it, and reject a flock member's PR to another base. The integrate tool MUST refuse a PR whose base is not the integration branch, whose approval comes from its own author, or whose checks are not green. |
-| F-9 | Agents of different breeds MUST act under different GitHub identities (or flokpit MUST provide an equivalent approval signal), so a reviewer's approval is a GitHub fact and verifier-is-not-author holds. |
+| F-8 | Agents of different breeds MUST act under different GitHub identities (or flokpit MUST provide an equivalent approval signal), so a reviewer's approval is a GitHub fact and verifier-is-not-author holds. |
 
 ### 7.5 Cross-cutting
 
@@ -431,10 +429,10 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | SC-12 | `/fly feature-team --task "..."` creates the channel, the lead with `+o` and the reviewer; the lead receives the kickoff | e2e with `echo`-runtime fixtures, then one real run |
 | SC-13 | A developer in a `bug-sweep` flock cannot spawn anyone; the planner cannot spawn a sixth developer | workflow tests |
 | SC-14 | `max_lifetime` expiry and `/land` both end the flock: summary posted, all members gone | workflow tests |
+| SC-15a | A developer in a `ui-bugfixing` flock can push to `ui-bugfixing/{date}` but not to the default branch | tool rendering test and one real attempt |
 | SC-15 | No flock member can merge to the default branch | tool rendering test and one real attempt |
 | SC-16 | Docs updated (X-6) | review |
-| SC-17 | In a `feature-team` flock, a developer PR targets the integration branch; the lead integrates it only after reviewer approval and green checks; the lead's attempt to integrate a PR with another base, or any member's `gh pr merge`, fails | workflow tests and one real run |
-| SC-18 | A reviewer's `gh pr review --approve` on a developer's PR succeeds (different identities) | one real run |
+| SC-17 | A reviewer's `gh pr review --approve` on a developer's PR succeeds (different identities) | one real run |
 
 ## 9. Non-goals
 
@@ -444,16 +442,19 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 - Formations that change themselves at runtime, or nested flocks.
 - Merging, deploying or closing issues on behalf of humans.
 
-## 10. Open decisions (phase 0)
+## 10. Phase-0 decisions
 
-| # | Decision | Options |
-|---|---|---|
-| 1 | Rename roles to breeds in flokpit's code, API and UI, or keep `Role` internally and only render? | full rename (cleaner, larger PR) / internal `Role` with breed loader (recommended for phase 1) |
-| 2 | Name conflicts | rename flokpit `architect`, `tester` / rename the breeds |
-| 3 | Delivery of `flokpit/formations` | git submodule (recommended) / published artifact |
-| 4 | Echo runtime for breeds | keep `hello` as a role / add `runtime` to the breed schema |
-| 5 | Commands | `/fly` + `/land` / `/spawn --formation` + `/kill --flock` |
-| 6 | Where content termination conditions are judged | lead declares, human confirms (recommended) / verifier agent / workflow heuristics |
+All six were decided by dennisjay on 2026-10-13; the record with the request
+ids is `docs/decisions/001-contract-delivery-to-flokpit.md`.
+
+| # | Decision | Options | Decided |
+|---|---|---|---|
+| 1 | Rename roles to breeds in flokpit's code, API and UI, or keep `Role` internally and only render? | full rename (cleaner, larger PR) / internal `Role` with breed loader | internal `Role` with a breed loader for phase 1; user-facing text says "breed" (B-8) |
+| 2 | Name conflicts | rename flokpit `architect`, `tester` / rename the breeds | rename the breeds: `architect` to `architect`, `tester` to `tester`; flokpit keeps its role names (B-11), the clash is resolved by B-10 |
+| 3 | Delivery of `flokpit/formations` | git submodule / published artifact | the published artifact, as a **GitHub release** with a human-cut tag: flokpit pins the tag and downloads `formations-<tag>.tar.gz` unauthenticated (B-1, 5.1, decision 002); the former bunny.net key `<short sha>.tar.gz` plus `LATEST` is removed; the archive carries `breeds/`, `formations/`, `specs/`, `scripts/validate.py`, `README.md` and `LICENSE` |
+| 4 | Echo runtime for breeds | keep `hello` as a role / add `runtime` to the breed schema | decided for phase 1: `hello` stays a role; an optional `runtime` in the breed schema stays the recorded alternative for a later phase (B-9) |
+| 5 | Commands | `/fly` + `/land` / `/spawn --formation` + `/kill --flock` | `/fly <formation>` and `/land <flock>`, with `/spawn --formation <name>` kept as a deprecated alias (5.9); `/kill --flock` is not the vocabulary |
+| 6 | Where content termination conditions are judged | lead declares, human confirms / verifier agent / workflow heuristics | the lead declares with intent `DONE` and a human op confirms; no verifier agent and no workflow heuristics. `limits_reached` and `no_progress_rounds` stay workflow-detected (F-3, F-4) |
 
 ## 11. References
 
