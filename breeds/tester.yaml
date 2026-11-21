@@ -1,7 +1,7 @@
 apiVersion: formations/v1alpha1
 kind: Breed
 name: tester
-description: Tests web UIs in a headless browser, writes end-to-end tests, audits accessibility and reports failures with screenshots.
+description: Tests web UIs in a headless browser (and APIs and CLIs where there is no UI), writes end-to-end tests, audits accessibility and reports failures with screenshots.
 status: proposal
 extends: _base
 
@@ -26,24 +26,46 @@ instructions: |
     run e2e` runs the end-to-end tests, `mise run ui-test:stop` ends the
     session. Without mise, use the start command the project's AGENTS.md or
     CLAUDE.md names, `npx playwright test` and `agent-browser` directly. One
-    plain command per call, no `&&` or `;`. If the app or the browser cannot
-    run here, post BLOCKED to the lead and stay available; do not post DONE.
+    plain command per call. Check that it answers before you test (`curl -sf
+    localhost:$PORT`). If the app or the browser cannot run here, post
+    BLOCKED to the lead with the command and its output and stay available;
+    do not post DONE.
+  - A project without a browser UI (an API, a CLI, a library) is still yours
+    to test: drive it end to end the way a user would (HTTP requests against
+    the started service, the built command with real arguments) and write
+    those tests with the project's own test framework. Skip the browser and
+    the accessibility parts and say so in the report.
+  - A deployed preview or staging URL can only be tested when its host is
+    reachable through the egress proxy; if it is not, post BLOCKED with the
+    host name so a human can allow it. External services the page calls
+    (payment, analytics, maps) are mocked with request interception.
   - Test the user flows you are asked about, then edge cases: empty states,
     errors, slow responses, keyboard-only use, small screens.
   - Check accessibility (WCAG 2.2 AA) on every page you touch.
-  - Turn every confirmed bug into a failing end-to-end test under tests/e2e/.
-    Do not change application code; you may add the test dependency and the
-    Playwright configuration (package.json, playwright.config.*).
+  - Turn every confirmed bug into a failing end-to-end test where the project
+    keeps such tests (tests/e2e/ when it has no place yet). Do not change
+    application code; you may add what the tests need: the test dependency
+    with the project's package manager (which updates its manifest and
+    lockfile), the Playwright configuration, fixtures, .gitignore entries.
+    Use the Playwright release the browser image carries; never run
+    `playwright install`.
   - Read the acceptance criteria from the issue or spec you are given
     (`gh issue view`, `gh pr view`); bring approved work you must test into
     your branch with `git fetch` and `git merge`.
-  - Write the report to tests/e2e/reports/ and the screenshots next to it,
-    commit them and link them in the PR: the pod's test-results/ directory
-    disappears with the pod.
+  - Write the report next to the tests (tests/e2e/reports/) and the
+    screenshots next to it, commit and push them and link them in the PR:
+    the pod's test-results/ directory disappears with the pod, and other
+    agents can only open what is on your pushed branch. In a flock without
+    pull requests, name the branch and path of each screenshot.
+  - A bug that needs tracking beyond this session becomes an issue (`gh
+    issue create --body-file`) with the steps and the screenshot link, unless
+    your lead files the issues.
   - Report failures with steps to reproduce, expected and actual behaviour
     and a link to the screenshot; post BLOCKED if the app does not start.
   - When told to pull a fix, pull the flock's integration branch, re-test the
-    reported flow and report the result in the channel.
+    reported flow and report the result in the channel. In a flock with an
+    integration branch your own pull request goes against it, and you merge
+    it into that branch after the reviewer approved it.
 
 skills:
   - { source: anthropics/skills, ref: dbd4588f9e10, path: skills/webapp-testing, license: Apache-2.0, review: pending }
@@ -70,44 +92,28 @@ pod:
 os:
   writable_paths: [/workspace, /home/agent, /tmp, /dev/shm]
   tmp_size: 2Gi
-  network:
-    allow: [github.com, api.github.com, codeload.github.com, raw.githubusercontent.com, objects.githubusercontent.com, registry.npmjs.org, pypi.org, files.pythonhosted.org, localhost]
 
 tools:
   edit:
-    "/workspace/repo/tests/e2e/**": allow
-    "/workspace/repo/playwright.config.*": allow
-    "/workspace/repo/package.json": allow
-    "/workspace/repo/.gitignore": allow
-    "/tmp/**": allow
+    "/workspace/**": allow      # tests live where the project keeps them (tests/e2e, e2e/, apps/*/tests, cypress/); manifests and lockfiles change with the test dependency
+    "/workspace/**/.git/**": deny
   bash:
-    "git add *": allow
-    "git add -A*": deny                     # stage named files only
+    "*": allow                              # any command: every stack, package manager and project script; the pod, the egress proxy and the credential are the boundary
+    "curl *": allow             # replaces the _base deny: health checks and API tests
+    "wget *": allow
+    "git add -A*": deny         # stage named files only: no test-results/, no screenshots of secrets
     "git add .": deny
-    "git commit*": allow
-    "git fetch*": allow
-    "git pull*": allow
-    "git checkout *": allow
-    "git push origin {branch}*": allow
-    "gh pr create*": allow
-    "gh pr comment*": allow
-    "bun *": allow
-    "sleep *": allow
-    "kill *": allow
-    "make *": allow
-    "uv *": allow
-    "gh issue view*": allow
-    "gh pr view*": allow
-    "mise run *": allow
-    "mise install*": allow
-    "curl *": allow             # overrides the _base deny; egress is limited to localhost and the registries
-    "npm *": allow
-    "npx *": allow
-    "pnpm *": allow
-    "node *": allow
-    "python3 *": allow
-    "playwright-cli *": allow
-    "agent-browser *": allow
+    "git push * main": deny     # the credential (write-own-branch) is the real limit
+    "git push * master": deny
+    "git push *:main*": deny
+    "git push *:master*": deny
+    "git push --force*": deny
+    "git push -f*": deny
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
+    "gh pr merge*": deny
+    "gh repo delete*": deny
+    "gh issue delete*": deny
 
 limits:
   max_turns: 512  # per user turn; was 60
@@ -127,7 +133,7 @@ roosts:
     cooldown: 5m
 
 credentials:
-  github: ["contents:write-own-branch", "pull_requests:write", "issues:read", "checks:read"]
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:write", "checks:read", "actions:read"]   # issues:write: file confirmed bugs
 
 handoff:
   done: A test report (passed and failed flows, accessibility findings, screenshots) and a PR with new e2e tests, posted with intent DONE.

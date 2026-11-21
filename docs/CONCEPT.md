@@ -197,7 +197,7 @@ The breed states permissions per category; Claude Code wants rule strings.
 | `read` | absolute path glob `/tmp/**` | `Read(//tmp/**)` (Claude needs `//` for absolute paths) |
 | `edit` | absolute path glob `/workspace/**` | `Edit(//workspace/**)`, plus `Write` once any edit is allowed |
 | `bash` | command pattern `git *` | `Bash(git *)` |
-| `webfetch` | `allow`/`deny` or domain pattern | `WebFetch` / `WebFetch(domain:<d>)` |
+| `webfetch` | `allow`/`deny` or a bare host name as the pattern (`"*"` = every host the egress proxy lets through) | `WebFetch` / `WebFetch(domain:<d>)` |
 | `websearch` | `allow`/`deny` | `WebSearch` |
 | `mcp` | `flokpit/*` | `mcp__flokpit__*` (server/tool → `mcp__server__tool`) |
 | `subagents` | `allow`/`deny` | `Agent` (Task) |
@@ -291,6 +291,23 @@ design. Delivery path:
   them `gh pr checks`, `gh run view` and issue reads fail with 403 on private
   repositories. The gateway grants them read-only. `contents:write-own-branch`
   stays limited to the agent's own branch.
+- Scopes the breeds request beyond the first set, each to be granted by the
+  gateway with exactly this reach: `issues:write` (create, edit, label,
+  comment; no delete), `workflows:write` (push changes under
+  `.github/workflows` on the agent's own or the integration branch; developer
+  and devops), `actions:write` (rerun and dispatch workflow runs),
+  `security_events:read` (Dependabot and code scanning alerts),
+  `security_advisories:write` (draft repository security advisories; the
+  security-auditor on public repositories), `releases:write-draft` (create
+  and edit draft releases, which create no tag; the release-manager),
+  `contents:write-integration-branch` now also for architect, tester,
+  tech-writer, devops and release-manager. A scope the gateway does not know
+  MUST be refused, not widened; the breed then posts BLOCKED at that step.
+- Tool rules follow "functionality over security" since 2026-11-21
+  (`docs/USECASES.md` section 9): breeds that run project code allow every
+  shell command, so requirement X-5 carries the whole weight: pod, proxy and
+  gateway credentials are the boundary, the rules only keep a cooperative
+  agent away from pushes to the default branch, merges, tags and deletes.
 - Breeds that review must act under a different GitHub identity than the
   breeds whose work they review (F-8); otherwise GitHub refuses the approval.
 - `workspace.clone: false` means no checkout; agentd starts in an empty

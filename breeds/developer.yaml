@@ -17,24 +17,56 @@ instructions: |
   {spawner} in {channel}. The repository {repo} is checked out at
   /workspace/repo on branch {branch}. Work only on that branch.
 
-  - Write a failing test first, then the code that makes it pass.
+  - Orient first: read AGENTS.md or CLAUDE.md, the README and `mise tasks`.
+    Use the project's own stack, layout, test framework and conventions;
+    never introduce a second one.
+  - Write a failing test first, then the code that makes it pass. In a
+    project without tests, add the smallest test setup its stack uses and say
+    so in the pull request; where even that is out of proportion, show the
+    reproduction and the verification as commands with their output.
   - Find the root cause before fixing a bug; do not patch symptoms.
   - Run the project's checks before you claim anything works: with a mise
     configuration `mise run check` (or `mise run test`, `typecheck`, `e2e`;
-    `mise tasks` lists them), otherwise the commands its AGENTS.md or
-    CLAUDE.md names. Red is a finding to report, not something to push.
-  - Keep PROGRESS.md in the repository up to date with what is done and next.
+    `mise tasks` lists them), otherwise the commands its AGENTS.md, CLAUDE.md,
+    README, manifest or CI workflow names. If your prompt reports a failed
+    toolchain install, run `mise install` once; a tool that is still missing
+    is BLOCKED. Red is a finding to report, not something to push.
+  - A check that needs something this pod does not have (Docker, a database
+    service, a cloud account): use the project's in-process or mise-provided
+    alternative when there is one; otherwise run everything else, say exactly
+    what you could not run, and take the CI run of your pull request as the
+    evidence (`gh pr checks`).
+  - PROGRESS.md: keep it up to date only when the project has one and you
+    work alone. In a flock the lead owns it; you report on the issue and the
+    pull request.
   - Push before you say something is done, open a pull request against the
-    default branch, and request review in the channel with the PR link.
+    default branch (or the base your task names: an integration branch, or
+    the branch you stack on), write "Closes #<n>" when it resolves an issue,
+    and request review in the channel with the PR link.
+  - After the push read the checks (`gh pr checks`, `gh run view
+    --log-failed`). A red run is yours to fix. A run that failed for a reason
+    outside your change (flaky test, infrastructure) you may rerun once with
+    `gh run rerun --failed`; name it in the pull request.
   - Read review feedback including inline comments (`gh api
-    repos/<owner>/<repo>/pulls/<n>/comments`) and CI failures (`gh pr checks`,
-    `gh run view --log-failed`) before you answer them.
-  - Never push to the default branch and never merge your own pull request.
+    repos/<owner>/<repo>/pulls/<n>/comments`) before you answer it.
+  - Never push to the default branch and never merge your own pull request
+    into it.
   - Before `gh pr create`, check `gh pr list --head {branch}`. If a push is
-    rejected as non-fast-forward, fetch and rebase; never force-push.
-  - When your flock has an integration branch, skip the pull request: rebase
-    on that branch, run the tests, merge your fix into it, push it, and tell
+    rejected as non-fast-forward, fetch and rebase your unpushed commits. To
+    bring a moved base into a branch you already pushed, merge it (`git merge
+    origin/<base>`); never force-push.
+  - When your flock has an integration branch, it is your base instead of the
+    default branch. In a flock that reviews (the lead says so): open the pull
+    request against it and, once the reviewer approved and the checks are
+    green, merge your branch into it yourself (`git switch`, `git pull`, `git
+    merge --no-ff {branch}`, `git push origin <integration branch>`) and say
+    so in the channel. In a flock without pull requests (ui-bugfixing):
+    rebase on it, run the tests, merge your fix into it, push it, and tell
     the tester in {channel} to pull.
+  - A bug you find that is not your task becomes an issue (`gh issue create
+    --body-file`), not a wider pull request.
+  - If a push is rejected because it changes .github/workflows and the
+    credential has no workflow scope, post BLOCKED and name the files.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/test-driven-development, license: MIT, review: pending }
@@ -55,31 +87,18 @@ pod:
     requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
     limits:   { cpu: "2",  memory: 6Gi, ephemeral-storage: 8Gi }   # flokpit: 3Gi was OOMKilled by builds and test runs
 
-os:
-  network:
-    allow:
-      - github.com
-      - api.github.com
-      - codeload.github.com
-      - raw.githubusercontent.com
-      - objects.githubusercontent.com
-      - registry.npmjs.org
-      - pypi.org
-      - files.pythonhosted.org
-      - developer.mozilla.org     # documentation hosts for WebFetch (below)
-      - docs.python.org
-      - nodejs.org
-      - www.typescriptlang.org
-      - docs.npmjs.com
-
 tools:
   edit:
     "/workspace/**": allow
     "/workspace/**/.git/**": deny           # no hooks or config through the Edit tool
-    "/tmp/**": allow
+    "/home/agent/**": allow                 # tool configuration and caches (~/.npmrc, ~/.cargo/config.toml)
+    "/home/agent/.ssh/**": deny
+    "/home/agent/.config/gh/**": deny
   bash:
-    "git *": allow
-    "git push * main": deny
+    "*": allow                              # any command: every stack, package manager and project script; the pod, the egress proxy and the credential are the boundary
+    "curl *": allow                         # replaces the _base deny; the egress proxy is the boundary
+    "wget *": allow
+    "git push * main": deny                 # the credential (write-own-branch, write-integration-branch) is the real limit
     "git push * master": deny
     "git push *:main*": deny
     "git push *:master*": deny
@@ -89,39 +108,13 @@ tools:
     "git remote set-url*": deny
     "git remote remove*": deny
     "git push --force*": deny
-    "gh pr create*": allow
-    "gh pr list*": allow
-    "gh pr view*": allow
-    "gh pr comment*": allow
-    "gh pr edit*": allow
-    "gh issue comment*": allow
-    "gh api repos/*/pulls/*": allow         # inline review comments; the credential is the real limit
+    "git push -f*": deny
     "gh api -X DELETE*": deny
     "gh api --method DELETE*": deny
     "gh pr merge*": deny
-    "npm *": allow
-    "npx *": allow
-    "pnpm *": allow
-    "bun test*": allow
-    "bun run *": allow
-    "bun install*": allow
-    "mise run *": allow
-    "mise install*": allow
-    "node *": allow
-    "python3 *": allow
-    "uv *": allow
-    "make *": allow
-    "curl *": allow                         # replaces the _base deny; the egress proxy is the boundary
-    "wget *": allow
-    "pytest*": allow
-    "ruff *": allow
-    "pip *": allow
-  webfetch:                                 # curated documentation hosts, also in os.network.allow
-    "domain:developer.mozilla.org": allow
-    "domain:docs.python.org": allow
-    "domain:nodejs.org": allow
-    "domain:www.typescriptlang.org": allow
-    "domain:docs.npmjs.com": allow
+    "gh repo delete*": deny
+    "gh issue delete*": deny
+    "gh release delete*": deny
 
 limits:
   max_turns: 512
@@ -130,6 +123,15 @@ lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
 
 roosts:
+  - name: changes-requested
+    description: "Preconfigured roost: a review that requests changes on a flokpit branch brings a developer to address it."
+    filter:
+      event_name_filter: github.event.pull_request_review_submitted
+      event_detail_filter:
+        github.event_detail.state: changes_requested
+    task: "Address the review on pull request #{github.event_detail.number} of {github.event_detail.repo}: check out its branch, read every comment, fix, push. {github.event_detail.url}"
+    max_concurrent: 2
+    cooldown: 1m
   - name: issue-labeled
     description: "Preconfigured roost: an issue labelled for flokpit becomes this developer's task."
     filter:
@@ -141,7 +143,8 @@ roosts:
     cooldown: 1m
 
 credentials:
-  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
+  # issues:write: file what it finds outside its task; workflows:write: CI files are code too; actions:write: rerun a flaky run
+  github: ["contents:write-own-branch", "contents:write-integration-branch", "pull_requests:write", "issues:write", "checks:read", "actions:write", "workflows:write"]
 
 handoff:
   done: A pull request link with passing tests, posted with intent DONE.

@@ -26,7 +26,12 @@ instructions: |
   - File one GitHub issue per item and post the plan as a checklist. Write
     the body to /tmp/issue-<n>.md with the edit tool, then run one plain
     command: `gh issue create --title '...' --body-file /tmp/issue-<n>.md`.
-    No heredocs, `cd`, `&&` or `cat`; compound commands are denied.
+    No heredocs: a body with several lines always goes through a file.
+    If the repository has issues disabled, post the plan as a checklist in
+    the channel with intent QUESTION and ask where the items should live.
+  - A plan lives in the issues and the channel, not in a file of the
+    repository: when a skill wants to save a plan document, write it under
+    /tmp and put its content into the issue or the checklist.
   - You cannot run the project. Confirm a bug by reading the code and the
     issue; reproducing it with a failing test is the developer's first step.
     Escalate what you cannot judge statically. Create labels you need with
@@ -36,6 +41,9 @@ instructions: |
     the default branch.
   - When leading a flock, spawn one developer per independent item and a
     reviewer; spawn before you file more issues than the flock can take.
+    Close an issue only when its pull request is approved and green (or
+    merged); comment on pull requests with `gh pr comment` when the author
+    agent is gone.
 
 skills:
   - { source: obra/superpowers, ref: bb92a7774141, path: skills/writing-plans, license: MIT, review: pending }
@@ -54,15 +62,14 @@ pod:
     limits:   { cpu: "1",  memory: 1Gi,   ephemeral-storage: 2Gi }
 
 tools:
-  edit:
-    "/tmp/**": allow
   bash:
     "gh issue *": allow
-    "git fetch*": allow
-    "git show origin/*": allow
-    "git ls-remote*": allow
+    "gh pr comment*": allow
     "gh label create*": allow
-    "gh api repos/*/milestones*": allow
+    "gh label edit*": allow
+    "gh api repos/*": allow                 # milestones, sub-issues, review threads; the credential is the limit
+    "gh api -X DELETE*": deny
+    "gh api --method DELETE*": deny
     "gh issue delete*": deny
     "gh issue transfer*": deny
     "gh issue pin*": deny
@@ -77,7 +84,9 @@ lifecycle:
   max_lifetime: 4h
 
 privileges:
-  may_spawn: [developer, reviewer]
+  may_spawn: [developer, reviewer, tester, devops, tech-writer]
+
+commands: [honk, fly]           # fly the breeds in may_spawn when working alone; in a flock the formation's lead_commands apply
 
 roosts:
   - name: issue-labeled
@@ -91,7 +100,7 @@ roosts:
     cooldown: 10m
 
 credentials:
-  github: ["contents:read", "issues:write", "pull_requests:read", "checks:read", "actions:read"]
+  github: ["contents:read", "issues:write", "pull_requests:write", "checks:read", "actions:read"]   # pull_requests:write: comments only, the rules deny the rest
 
 handoff:
   done: A plan checklist in the channel with one linked issue per item, each with acceptance criteria, posted with intent DONE.

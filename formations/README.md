@@ -12,10 +12,18 @@ formation text are what make the flock behave.
 
 | Formation | Lead | Members | Shape | Use |
 |---|---|---|---|---|
-| [feature-team](feature-team.yaml) | architect | developers (1-4), reviewer, tester (optional) | orchestrator, workers, independent verifier | a feature that spans several modules |
+| [feature-team](feature-team.yaml) | architect | developers (1-4), reviewer, tester, devops, tech-writer (optional) | orchestrator, workers, independent verifier, on an integration branch | a feature that spans several modules |
 | [bug-sweep](bug-sweep.yaml) | planner | developers (1-5), reviewer | fan-out, independent verifier | many small, independent issues |
 | [ui-bugfixing](ui-bugfixing.yaml) | planner | tester, developers (3) | continuous find, triage, fix on an integration branch | keep a UI healthy without tickets: the tester explores, the planner triages, developers merge fixes |
+| [project-setup](project-setup.yaml) | architect | devops, reviewer, developers (0-2), tester, tech-writer (optional) | bootstrap on an integration branch | make a new or existing repository workable: mise contract, pipeline, first tests, AGENTS.md |
+| [security-sweep](security-sweep.yaml) | security-auditor | developers (0-3), reviewer | audit, fix, re-test | audit a repository and fix what the audit finds |
+| [release](release.yaml) | release-manager | reviewer, tester, developers (0-3), devops, tech-writer (optional) | stabilise on a release branch, hand over | get a release ready; a human tags and publishes |
+| [maintenance](maintenance.yaml) | project-manager | issue-checker, pr-checker, reviewer, developer, devops, security-auditor, tech-writer, consultant: all roosted | standing, event-driven | keep a repository healthy for a day without a task |
 | [product-discovery](product-discovery.yaml) | project-manager | architect, tester, planner (optional) | discovery before any code | turn an idea into a spec, an architecture sketch, acceptance tests and a backlog |
+
+Every formation also carries the roosted helpers `watchdog` and `resumer`,
+most of them `pr-checker` and an on-demand `consultant`. Which formation fits
+which task: [`docs/USECASES.md`](../docs/USECASES.md) section 9.1.
 
 ## Schema (`formations/v1alpha1`)
 
@@ -27,7 +35,7 @@ Validate with `uv run scripts/validate.py`.
 | `name`, `description`, `status`, `shape` | identity | name `^[a-z][a-z0-9-]{0,31}$` |
 | `integration_branch` | shared branch | optional; branch (e.g. `ui-bugfixing/{date}`) that flokpit creates from the default branch and that members merge into directly; if it is missing, a developer creates it (the lead is read-only for git writes) |
 | `lead` | 1. lead | `breed`, `op` (lead gets `+o` in the flock channel), `overrides` |
-| `lead_commands`, `member_commands` | 1a. command grants | flokpit v2 commands the lead and the other members may use in the flock (same names as a breed's `commands`; `/land` and `/kick` act on the own flock). Replaces `op`, which v2 ignores. Missing means flokpit's shipped default: lead `land`, `kick`, `honk`, members `honk` |
+| `lead_commands`, `member_commands` | 1a. command grants | flokpit v2 commands the lead and the other members may use in the flock (same names as a breed's `commands`; `/land` and `/kick` act on the own flock). Replaces `op`, which v2 ignores. Missing means flokpit's shipped default: lead `land`, `kick`, `honk`, members `honk`. A lead with a `spawn_tree` entry needs `fly` (validator) |
 | `members` | 2. members | list of `{breed, count: {min, max}, start: with_flock \| on_demand \| on_roost, overrides}`; `on_roost` members are started only by a roost of the formation |
 | `spawn_tree` | 3. spawn tree | breed → breeds it may spawn inside the flock; omitted breeds spawn nothing |
 | `roosts` | 3a. roosts | list of `{name, breed, preset, filter?, task?, max_concurrent?, cooldown?}`: roosts that `/fly` creates in the flock channel and `/land` removes, each from a member breed's preconfigured roost (`preset`, a name from the breed's `roosts`) with overrides (`event_name_filter` replaces, `event_detail_filter` merges per key and `null` removes a key, `task` and guards replace); placeholders are rendered at `/fly`; see [`docs/ROOST.md`](../docs/ROOST.md) section 4 |

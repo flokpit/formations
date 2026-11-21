@@ -1,0 +1,113 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: security-sweep
+description: Audits a repository and fixes what the audit finds; a security auditor reports and prioritises, developers fix one finding each with a regression test, a reviewer verifies, and the auditor re-tests every fix.
+status: proposal
+shape: audit-fix-retest
+
+lead:
+  breed: security-auditor
+
+lead_commands: [fly, land, kick, honk]   # flokpit v2 grants for the lead: fly its members, land and kick them, land the flock
+member_commands: [honk]
+
+members:
+  - breed: developer
+    count: { min: 0, max: 3 }
+    start: on_demand            # one per confirmed finding, after the report
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled developer
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
+
+spawn_tree:
+  security-auditor: [developer, reviewer]
+  watchdog: [consultant, developer, reviewer]
+  resumer: [developer, reviewer, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
+
+work_split: |
+  1. The auditor audits the scope of the task (the whole repository when
+     none is named): dependencies, code, pipeline and configuration, and
+     proves what it can against a local instance.
+  2. It reports: one issue per finding in a private repository; private
+     advisories and a human decision in a public one. Nothing exploitable
+     is posted in a public place, and that includes pull request titles and
+     descriptions.
+  3. Confirmed findings are fixed in order of severity, one developer per
+     finding, findings in the same files by the same developer one after
+     the other. A fix comes with a regression test that fails without it;
+     a dependency finding is fixed by the update with the lockfile.
+  4. The reviewer reviews every fix; the auditor re-runs its reproduction
+     against the fix branch and only then calls the finding closed.
+  5. What cannot be fixed here (a design flaw, a third-party service, a
+     secret that must be rotated) is escalated with the reason.
+
+handoffs:
+  security-auditor: { deliver: "confirmed finding with severity, location, proof and the recommended fix", to: developer }
+  developer:        { deliver: "PR link with the fix and a regression test that failed before it", to: reviewer }
+  reviewer:         { deliver: "submitted PR review: approve or request changes", to: security-auditor }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+
+verification:
+  required: [reviewer-approved, ci-green, regression-test-present, auditor-retested]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - all_findings_fixed_or_escalated
+    - human_stop
+    - no_progress_rounds: 3
+    - limits_reached
+  summary: Table of findings with severity and status (fixed and re-tested, escalated, unconfirmed, accepted risk) and PR links, the scope that was covered and what was not, and what a human must do (merge, rotate secrets, decide on escalated items).
+
+limits:
+  max_agents: 10                # lead + 3 developers + reviewer + consultant + 2 pr-checkers + watchdog + resumer
+  max_lifetime: 8h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "security-sweep: {task}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - finding_high_or_critical    # always, at once, before the fix
+  - public_repository_disclosure
+  - secret_found                # rotation is a human's job
+  - merge_to_default_branch
+  - finding_needs_design_decision
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Post the scope as you understood it and whether the repository is public
+  or private (`gh repo view --json visibility`), because that decides where
+  findings go. Audit first; spawn developers only after the report, the
+  reviewer is already there. Tell the humans about a high or critical
+  finding as soon as you have confirmed it, not at the end.

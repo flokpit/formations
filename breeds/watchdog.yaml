@@ -101,7 +101,7 @@ lifecycle:
   max_lifetime: 12m             # shorter than the 15 minute cadence, so runs never overlap
 
 privileges:
-  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker]
+  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, devops, tech-writer, security-auditor, release-manager]
   chat:
     mode: voice
     op: true                    # v1 leftover, ignored by flokpit v2; the grants are in `commands`

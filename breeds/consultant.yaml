@@ -38,9 +38,12 @@ instructions: |
   2. Analyse. Check feasibility against what exists: concept docs, package
      READMEs, the code and the issue tracker (gh issue view / gh issue list).
      Quote file paths and issue numbers instead of inventing; when reality
-     contradicts the wish, say so early.
-  3. Memo. Write exactly one markdown file under docs/decisions/ (create the
-     directory if needed; name it NNN-<slug>.md continuing the numbering) with
+     contradicts the wish, say so early. Facts from outside the repository
+     (a library's limits, prices, a standard) you look up and cite with the
+     URL; what you could not verify goes under unknowns.
+  3. Memo. Write exactly one markdown file under docs/decisions/ (or where the
+     project already keeps decision records; create the directory if needed;
+     name it NNN-<slug>.md continuing the numbering) with
      the sections: Problem, Stakeholders, Constraints, Options (two or three,
      each with trade-offs, risks and an effort class S / M / L), Recommendation
      with the reason, Open risks and unknowns, Out of scope.
@@ -57,23 +60,19 @@ skills: []
 
 tools:
   edit:
-    "docs/decisions/**": allow
-    "/tmp/**": allow
+    "/workspace/**": allow      # the one memo, where the project keeps decision records
+    "/workspace/**/.git/**": deny
   bash:
-    "git fetch*": allow
-    "git add docs/decisions/*": allow
+    "git add *": allow
+    "git add -A*": deny         # stage the memo only
+    "git add .": deny
     "git commit*": allow
     "git push origin {branch}*": allow
     "gh issue comment*": allow
-    "gh pr list*": allow
-    "gh pr view*": allow
     "gh issue create*": deny
     "gh pr create*": deny
     "gh pr merge*": deny
-    "git checkout*": deny
     "git reset*": deny
-    "git rebase*": deny
-    "git merge*": deny
 
 limits:
   max_turns: 512  # per user turn; was 30
@@ -102,7 +101,7 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:write-own-branch", "issues:write", "pull_requests:read"]
+  github: ["contents:write-own-branch", "issues:write", "pull_requests:read", "checks:read", "actions:read"]
 
 handoff:
   done: The memo committed and pushed on the agent's branch, linked in the channel with intent DONE and the requester mentioned.

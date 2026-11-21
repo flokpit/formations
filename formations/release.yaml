@@ -1,0 +1,130 @@
+apiVersion: formations/v1alpha1
+kind: Formation
+name: release
+description: Gets a release ready on a release branch; a release manager fixes scope, version and changelog, a tester runs the regression pass, developers fix blockers only, a reviewer verifies, and a human tags and publishes.
+status: proposal
+shape: stabilise-and-hand-over
+
+integration_branch: "release/{flock}"   # the release branch: created from the default branch, only blocker fixes go in
+
+lead:
+  breed: release-manager
+
+lead_commands: [fly, land, kick, honk]   # flokpit v2 grants for the lead: fly its members, land and kick them, land the flock
+member_commands: [honk]
+
+members:
+  - breed: reviewer
+    count: { min: 1, max: 1 }
+    start: with_flock
+  - breed: tester
+    count: { min: 0, max: 1 }
+    start: on_demand            # the regression pass; for a project with a UI, an API or a CLI to drive
+  - breed: developer
+    count: { min: 0, max: 3 }
+    start: on_demand            # one per release blocker
+  - breed: devops
+    count: { min: 0, max: 1 }
+    start: on_demand            # when the pipeline, the build or the packaging is the blocker
+  - breed: tech-writer
+    count: { min: 0, max: 1 }
+    start: on_demand            # upgrade notes and documentation of what ships
+  - breed: consultant
+    count: { min: 0, max: 1 }
+    start: on_demand            # the watchdog brings one in for a troubled member
+  - breed: pr-checker
+    count: { min: 0, max: 2 }
+    start: on_roost
+  - breed: watchdog
+    count: { min: 0, max: 1 }
+    start: on_roost
+  - breed: resumer
+    count: { min: 0, max: 1 }
+    start: on_roost
+
+spawn_tree:
+  release-manager: [developer, reviewer, tester, devops, tech-writer]
+  watchdog: [consultant, developer, reviewer, tester, devops, tech-writer]
+  resumer: [developer, reviewer, tester, devops, tech-writer, pr-checker]
+
+roosts:                         # created by /fly in the flock channel, removed by /land
+  - { name: watchdog, breed: watchdog, preset: quarter-hour }
+  - { name: resumer,  breed: resumer,  preset: budget-reset }
+  - name: pr-checker
+    breed: pr-checker
+    preset: pr-opened-or-updated
+    filter:
+      event_detail_filter:
+        github.event_detail.repo: "{repo}"
+        github.event_detail.head_ref: "flokpit/*"   # the flock's own branches only
+
+work_split: |
+  1. The release manager finds out how the project releases, lists what is
+     in the release since the last tag and what is still open for it, and
+     gets scope and version confirmed by a human.
+  2. {integration_branch} is the release branch. The first developer or
+     devops agent creates it from the default branch and pushes it (the
+     lead's own work goes there through a pull request like everyone's).
+  3. The tester runs the regression pass against {integration_branch}: the
+     project's whole suite, then the flows the release changes. The devops
+     agent proves the build and packaging step without publishing.
+  4. Every failure is triaged by the release manager: a blocker gets a
+     developer (one blocker each, pull request against
+     {integration_branch}, merged into it by its author after approval and
+     green checks); everything else becomes an issue for the next release.
+  5. The release manager's pull request with the version bump and the
+     changelog goes in last, reviewed like the others. Then it opens the
+     pull request from {integration_branch} to the default branch, drafts
+     the release notes and posts the checklist for the human.
+
+handoffs:
+  release-manager: { deliver: "confirmed scope and version, the blocker list, and at the end the release PR, draft notes and checklist", to: reviewer }
+  tester:          { deliver: "regression report against the release branch: passed and failed flows with screenshots", to: release-manager }
+  developer:       { deliver: "PR against the release branch that fixes one blocker with a regression test; merged into it by the author after approval", to: reviewer }
+  devops:          { deliver: "proof that build and packaging work from the release branch, or a fix PR", to: reviewer }
+  tech-writer:     { deliver: "PR against the release branch with upgrade notes and updated documentation", to: reviewer }
+  reviewer:        { deliver: "submitted PR review: approve or request changes", to: release-manager }
+
+state:
+  kind: github-issues
+  label: "flock:{flock}"
+
+verification:
+  required: [reviewer-approved, ci-green, regression-pass-on-release-branch, scope-and-version-confirmed-by-human]
+  optional: [package-build-dry-run]
+  verifier_is_not_author: true
+
+termination:
+  conditions:
+    - release_ready             # release PR approved and green, draft notes and checklist posted
+    - human_stop
+    - no_progress_rounds: 3
+    - limits_reached
+  summary: The release pull request, the draft release notes, the regression report, the blockers fixed and the items moved to the next release, and the checklist of what the human does (merge, tag or publish, verify, roll back).
+
+limits:
+  max_agents: 13                # lead + reviewer + tester + 3 developers + devops + tech-writer + consultant + 2 pr-checkers + watchdog + resumer
+  max_lifetime: 8h
+  max_budget_usd: 0
+  turn_budget: 40
+
+channel:
+  create: true
+  name: "#{flock}"
+  topic: "release: {task}"
+  modes: [n, t, M]
+
+escalate_to_human:
+  - scope_or_version_decision   # always
+  - tag_and_publish             # always: agents never tag or publish
+  - merge_to_default_branch
+  - blocker_without_fix
+  - budget_or_lifetime_extension
+
+kickoff: |
+  Post how this project releases as you read it from the repository, the
+  list of changes since the last tag and the version you propose, with
+  intent QUESTION; wait for the humans to confirm scope and version. Then
+  spawn a developer or devops agent to create {integration_branch} from the
+  default branch, and the tester for the regression pass; the reviewer is
+  already there.

@@ -22,8 +22,12 @@ instructions: |
     then tests, then readability. Read the diff and the code around it.
   - Run the tests yourself; do not trust a claim that they pass: with a mise
     configuration `mise run test-suite` (or `mise run check`), otherwise the
-    commands the project's AGENTS.md or CLAUDE.md names. After checking out a
-    PR that changed mise.toml, run `mise install` first.
+    commands the project's AGENTS.md, CLAUDE.md, README, manifest or CI
+    workflow names, after installing its dependencies from the lockfile.
+    After checking out a PR that changed mise.toml, run `mise install` first.
+    What cannot run here (it needs Docker, a database, a cloud account) you
+    name in the review and judge from the CI run (`gh pr checks`, `gh run
+    view --log-failed`); "not run" is never "passed".
   - Every finding names a file and line, what goes wrong and when. Post
     them as inline comments in one PR review: write the review JSON
     (`body`, `event`, `comments[]` with `path`, `line`, `body`) to
@@ -34,8 +38,17 @@ instructions: |
     closes (`gh issue view`), not only against the diff.
   - You are independent: you did not write this code and must not fix it.
     You may write scratch files and tests in the checkout to reproduce a
-    finding; never commit or push them, and remove them when you are done.
-  - Approve only when you would merge it yourself.
+    finding; never commit or push them, and remove them when you are done
+    (`git stash -u` or `git restore`, `git clean`).
+  - Approve only when you would merge it yourself. If GitHub refuses the
+    approval or the request for changes because you share the author's
+    identity, submit the same review with event COMMENT and put the verdict
+    in its first line ("Verdict: APPROVE" or "Verdict: REQUEST CHANGES"); the
+    lead and the humans read that line.
+  - A defect that was there before this pull request is not a finding
+    against it: file an issue (`gh issue create --body-file`) and link it.
+  - A pull request from a fork or with a base other than the default branch
+    is reviewed against its own base (`gh pr view --json baseRefName`).
   - If no pull request or branch was named, list open ones with
     `gh pr list`; if there is still none, ask the spawner in {channel}
     (QUESTION) and wait. Do not post DONE without a review.
@@ -60,43 +73,23 @@ pod:
     requests: { cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi }
     limits:   { cpu: "2",  memory: 6Gi, ephemeral-storage: 8Gi }   # same as developer: it runs the same builds and test suites
 
-os:
-  network:
-    allow: [github.com, api.github.com, codeload.github.com, raw.githubusercontent.com, objects.githubusercontent.com, registry.npmjs.org, pypi.org, files.pythonhosted.org]
-
 tools:
   edit:
     "/workspace/**": allow      # scratch reproductions; harmless: git push is denied and the credential is read-only
     "/workspace/**/.git/**": deny
-    "/tmp/**": allow
   bash:
-    "git checkout*": allow
-    "gh pr checkout*": allow
-    "gh pr review*": allow
-    "gh pr comment*": allow
-    "gh api repos/*/pulls/*": allow         # inline review comments (comments[] on a review)
+    "*": allow                              # any command: every stack, package manager and project script; the pod, the egress proxy and the credential are the boundary
+    "curl *": allow             # replaces the _base deny: health checks of a locally started app
+    "wget *": allow
+    "git push*": deny           # a reviewer never changes the code under review
+    "git commit*": deny
     "gh api -X DELETE*": deny
     "gh api --method DELETE*": deny
     "gh pr merge*": deny
-    "git push*": deny
-    "npm ci*": allow
-    "npm audit*": allow
-    "npm ls*": allow
-    "pnpm install*": allow
-    "pnpm audit*": allow
-    "bun install*": allow
-    "uv sync*": allow
-    "uv run *": allow
-    "python3 -m pip *": allow
-    "mise run *": allow
-    "mise install*": allow
-    "npm test*": allow
-    "npm run *": allow
-    "npx *": allow
-    "pnpm test*": allow
-    "bun test*": allow
-    "python3 -m pytest*": allow
-    "make test*": allow
+    "gh pr edit*": deny
+    "gh pr close*": deny
+    "gh repo delete*": deny
+    "gh issue delete*": deny
 
 limits:
   max_turns: 512  # per user turn; was 40
@@ -122,7 +115,7 @@ workspace:
   branch_prefix: flokpit/
 
 credentials:
-  github: ["contents:read", "pull_requests:write", "issues:read", "checks:read", "actions:read"]
+  github: ["contents:read", "pull_requests:write", "issues:write", "checks:read", "actions:read"]   # issues:write: file defects that predate the PR
 
 handoff:
   done: A submitted PR review (approve or request changes) linked in the channel with intent DONE.

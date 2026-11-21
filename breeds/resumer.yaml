@@ -82,7 +82,7 @@ lifecycle:
   max_lifetime: 15m
 
 privileges:
-  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, watchdog]
+  may_spawn: [consultant, developer, reviewer, tester, architect, planner, project-manager, issue-checker, pr-checker, watchdog, devops, tech-writer, security-auditor, release-manager]
   chat:
     mode: voice
     op: true                    # v1 leftover, ignored by flokpit v2; the grants are in `commands`

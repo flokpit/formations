@@ -11,7 +11,7 @@ lead:
   breed: planner
   op: true                      # v1 leftover, ignored by flokpit v2
 
-lead_commands: [land, kick, honk]   # flokpit v2 grants for the lead (fly, land, kick, rename, set, trigger, meta, honk)
+lead_commands: [fly, land, kick, honk]   # flokpit v2 grants for the lead: fly its members, land and kick them, land the flock
 member_commands: [honk]
 
 members:

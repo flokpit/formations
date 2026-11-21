@@ -22,7 +22,11 @@ and 2 describe the configuration **before** that change (they are the
 evidence for it); section 3 is what was applied, with the deviations listed at
 its top; section 7 re-runs the timelines. The new breeds (consultant,
 pr-checker, issue-checker, watchdog, resumer) and `ui-bugfixing` are walked in
-section 8.
+section 8. **Section 9 is the current state**: the table of which
+breed or formation serves which software engineering task, the breeds and
+formations added for the gaps, the check against different project setups,
+and the permission decisions made under "functionality over security".
+Where sections 1 to 8 describe a narrower rule, section 9 wins.
 
 Legend: ✅ works as configured · ⚠️ works with a caveat or depends on
 something unverified · ❌ blocked by the current configuration.
@@ -661,3 +665,185 @@ tester turn and echo flocks.
   (screenshots across pods) are decisions or flokpit questions, not
   permission gaps in the breed files.
 - Reviewer approval with distinct identities (F-8) is unchanged.
+
+## 9. Third pass: which breed for which task, missing breeds, project setups (2026-11-21)
+
+Paper simulation again, against the merged breeds (`_base` + breed file) and
+flokpit's renderer (`packages/specs/src/breed-fields.ts`: `bash: {"*": allow}`
+becomes the whole `Bash` tool, a command line is checked per sub-command,
+`deny` beats `allow`). Rule for this pass, set by the maintainer:
+**functionality goes over security** at the tool layer; pod, egress proxy and
+credentials stay the boundary (0.1).
+
+### 9.1 Software engineering task → breed or formation
+
+"Agent" = fly one breed alone; "roost" = let an event start it
+(`docs/ROOST.md`); a formation name = fly that flock.
+
+| # | Task | Use | Why this one |
+|---|---|---|---|
+| **Understand and decide** | | | |
+| S-1 | An unclear wish, a dead end, "should we do X or Y" | agent `consultant` (roost: label `needs-decision`) | elicits, checks feasibility, one decision memo |
+| S-2 | Turn an idea into spec, architecture sketch, acceptance tests and backlog | `product-discovery` | spec first, humans confirm, nothing is built |
+| S-3 | Write or update a spec, keep backlog, milestones and status | agent `project-manager` (roost: daily status) | documents and GitHub only |
+| S-4 | Understand a codebase, design a change, write an ADR, threat model | agent `architect` (roost: label `architecture`, `design`) | reads, runs `check` to see it work, writes ADRs |
+| S-5 | Cut a goal or an epic into issues with acceptance criteria | agent `planner` (roost: label `epic`, `plan`) | issues only, never code |
+| **Set up** | | | |
+| S-6 | Make a new or existing repository workable (toolchain, tasks, pipeline, first tests, AGENTS.md) | `project-setup`; for one item only, agent `devops` | the pieces depend on each other, so they meet on a setup branch |
+| S-7 | Add or repair CI, build, packaging, Dockerfile, infrastructure files | agent `devops` (roost: label `ci`, `build`, `infrastructure`) | owns the pipeline; has the workflow scope |
+| **Build** | | | |
+| S-8 | One feature or change in one area | agent `developer` (roost: label `flokpit`) plus roost `reviewer` on `pr-ready` | TDD, PR, independent review |
+| S-9 | A feature across several modules, with design | `feature-team` | ADR, parallel developers, reviewer, integration branch |
+| S-10 | Refactoring or a migration across modules (framework upgrade, API change) | `feature-team` with the task named as a refactoring | same shape: design the order, split by module, tests stay green |
+| S-11 | Performance work, a data migration, a library or CLI change | agent `developer` | measure first is part of "root cause"; no special breed |
+| **Fix** | | | |
+| S-12 | One bug | agent `developer` (roost: label `flokpit`) | failing regression test first |
+| S-13 | Many small independent issues | `bug-sweep` | planner triages, one developer per issue, reviewer |
+| S-14 | A UI that should be explored and fixed without tickets | `ui-bugfixing` | tester explores, planner triages, developers merge into a dated branch |
+| S-15 | A red pipeline on the default branch | roost `devops` on `ci-failed` | diagnosis first, fix PR or "not the pipeline's fault" |
+| S-16 | A review that requests changes on an agent's PR after the agent is gone | roost `developer` on `changes-requested` | picks the branch up again |
+| **Verify** | | | |
+| S-17 | Review a pull request | agent or roost `reviewer` | runs the tests itself, inline findings, verdict |
+| S-18 | Risk rating and integration tests on every PR | roost `pr-checker` | one comment, changes requested when critical |
+| S-19 | Triage incoming issues | roost `issue-checker` on `new-issue` | type, reproduction, labels |
+| S-20 | Test a UI, write e2e tests, accessibility audit | agent `tester` (roost: PR opened or updated) | headless browser, WCAG 2.2 AA |
+| S-21 | End-to-end tests for an API, a CLI or a library | agent `tester` | same breed, no browser part |
+| S-22 | Unit or integration tests for untested code (coverage backfill) | agent `developer` with that task | tests next to code are the developer's ground |
+| S-23 | Security audit of a codebase or its dependencies | agent `security-auditor` (roost: weekly); with fixes `security-sweep` | reports, never fixes; the sweep adds developers and re-test |
+| **Ship and keep running** | | | |
+| S-24 | Prepare a release: scope, version, changelog, notes, regression | agent `release-manager` for a small one; `release` with a regression pass and blockers | a human tags and publishes |
+| S-25 | Dependency updates | roost `devops` on `weekly-dependencies`, or agent `devops` | one PR per group, audit result, green checks |
+| S-26 | Documentation: README, guides, API reference, changelog, AGENTS.md | agent `tech-writer` (roost: label `documentation`) | runs every example it documents |
+| S-27 | Keep a repository healthy day to day without a task | `maintenance` | everything event-driven; the project manager reports |
+| S-28 | Agents that hang, loop or lost their provider budget | roosts `watchdog`, `resumer` (part of every formation) | ask, replace, wake |
+| **Not served, on purpose** | | | |
+| S-29 | Merge into the default branch, tag, publish, deploy, rotate secrets, change repository settings | a human | every formation escalates these |
+| S-30 | Debug a production system, read production data or logs | nobody | no access from the pod; paste the evidence into an issue, then S-12 |
+| S-31 | Work that needs Docker, a database service or a cloud account inside the pod | partly | agents run what they can and take CI as evidence (9.4, X-1) |
+
+Gaps this pass closed with new breeds: S-6, S-7, S-15, S-25 (`devops`), S-26
+(`tech-writer`), S-23 (`security-auditor`), S-24 (`release-manager`); with new
+formations: S-6 (`project-setup`), S-23 (`security-sweep`), S-24 (`release`),
+S-27 (`maintenance`); with a roost preset: S-16. S-21 was closed by widening
+the tester instead of adding a breed.
+
+### 9.2 The new breeds and formations, walked
+
+| # | Use case | Needs | Result |
+|---|---|---|---|
+| O-1 | devops: fix a failing workflow | `gh run view --log-failed`, edit `.github/workflows/**`, push; `workflows:write` | ✅ rules; ⚠️ the push needs the gateway to grant `workflows:write` (else BLOCKED, as instructed) |
+| O-2 | devops: rerun a flaky run | `gh run rerun --failed`; `actions:write` | ✅ / ⚠️ same dependency on the gateway |
+| O-3 | devops: write mise.toml and tasks, verify on a clean checkout | edit, `mise install`, `mise run check`, `git worktree add /tmp/clean` | ✅ |
+| O-4 | devops: change a Dockerfile or Terraform | no Docker daemon, no cloud account | ⚠️ lint and render only; the build is proven by CI, stated in the PR |
+| O-5 | devops: weekly dependency update | package manager, audit, lockfile, PR | ✅ for registries flokpit allows; ❌ private registries and Maven Central (X-3) |
+| O-6 | tech-writer: fix a README and run its commands | edit anywhere, any command, PR | ✅ |
+| O-7 | tech-writer: build a docs site (Docusaurus, MkDocs, Sphinx) | package manager, build | ✅; ⚠️ themes that fetch from hosts outside the allowlist fail the build |
+| O-8 | security-auditor: dependency audit | `npm audit`, `pip-audit`, `cargo audit`, `govulncheck`; advisory databases | ✅ npm, osv, GitHub; ⚠️ auditors that download a database from another host fail and are named in the report |
+| O-9 | security-auditor: prove a finding against a local instance | start the app, `curl localhost`, script under /tmp | ✅ |
+| O-10 | security-auditor: report on a private repository | `gh issue create`, `gh label create`; `issues:write` | ✅ |
+| O-11 | security-auditor: report on a public repository | private advisory via `gh api`; `security_advisories:write` | ⚠️ needs the gateway scope; otherwise counts only in the channel and a QUESTION, as instructed |
+| O-12 | security-auditor: read Dependabot alerts | `gh api repos/*/dependabot/alerts`; `security_events:read` | ⚠️ gateway scope; the local audit covers the same ground |
+| O-13 | release-manager: find the release process, list changes since the last tag | `git tag --list`, `gh release list`, `git log`, `gh pr list --state merged` | ✅ |
+| O-14 | release-manager: version bump with lockfile, changelog, package dry run | edit, package manager, `npm pack --dry-run`, `uv build` | ✅ |
+| O-15 | release-manager: draft release notes | `gh release create --draft`; `releases:write-draft` | ⚠️ gateway scope; fallback is the notes in the PR, as instructed |
+| O-16 | release-manager: tag and publish | - | by design a human (denied: `git tag v*`, tag pushes, `* publish`) |
+| O-17 | developer roost `changes-requested` | `gh pr checkout`, read comments, fix, push to the PR branch | ⚠️ `write-own-branch` must cover a `flokpit/*` branch another agent created; the maintenance roost filters on `flokpit/*`. Gateway question (X-4) |
+
+Formations (timeline checks, only the steps that could fail):
+
+| Formation | Step | Result |
+|---|---|---|
+| project-setup | devops creates `setup/{flock}`; every PR goes against it; author merges after approval | ✅ `contents:write-integration-branch` for devops, developer, tester, tech-writer, architect |
+| project-setup | repository without a single commit | by design a human makes the first commit; the kickoff asks for it |
+| project-setup | reviewer proves `mise install && mise run check` in a fresh worktree | ✅ |
+| security-sweep | lead (auditor) spawns developers | ✅ `may_spawn`, `lead_commands: fly` |
+| security-sweep | fix PR on a public repository reveals the hole | ⚠️ escalated (`public_repository_disclosure`); a private fork is a human's setup |
+| security-sweep | auditor re-tests the fix branch | ✅ `git fetch`, `git checkout`, its /tmp reproduction |
+| release | release branch `release/{flock}`, blocker PRs against it, lead's bump last | ✅ |
+| release | tester's regression pass on a project without a UI | ✅ since the tester covers APIs and CLIs |
+| maintenance | all members `on_roost`; several roosts for one breed (developer, devops) | ✅ validator; ⚠️ events from before the flight start nobody, the kickoff lists those items |
+| maintenance | lead idle for hours | ⚠️ the project-manager's `idle_timeout` is 60m; DONE posts of roosted agents wake it, a silent day lets it land. Fly it again or roost the formation on `townclock.event.daily` |
+| feature-team | items that build on each other (was ❌, steps 7 and 13) | ✅ `integration_branch: feature/{flock}`; review gate kept: the author merges only after approval and green checks |
+
+### 9.3 Different project setups
+
+Each cell: can the breed follow its instructions there?
+
+| Setup | developer, devops, tech-writer | reviewer, pr-checker, issue-checker | tester | architect, planner, PM, consultant |
+|---|---|---|---|---|
+| mise.toml with the contract tasks (reference: toy-example-bun) | ✅ | ✅ | ✅ | ✅ |
+| no mise; Node with npm, pnpm, yarn or bun | ✅ any command (was: `bun add`, `bunx`, `yarn` denied) | ✅ (was ❌ for the checkers: only `mise run` allowed, so nothing ran) | ✅ | ✅ |
+| no mise; Python (uv, pip, poetry, tox) | ✅ | ✅ (was ⚠️: only `uv sync`, `python3 -m pytest`) | ✅ | ✅ |
+| Go, Rust, Ruby | ✅ if the tool is in mise.toml; registries are on flokpit's toolchain list (was ❌ D-8) | ✅ | ✅ | ✅ |
+| Java, Kotlin, .NET, PHP | ⚠️ rules fine; Maven Central, Gradle plugins, NuGet, Packagist are not on the egress list (X-3) | ⚠️ same | ⚠️ same | ✅ |
+| monorepo (workspaces, several packages) | ✅ house rule: work in the package the task names | ✅ | ✅ edits anywhere (was ❌: only root `package.json` and `tests/e2e/`) | ✅ |
+| other layout (`doc/adr`, `e2e/`, `specs/`, `cypress/`) | ✅ | ✅ | ✅ (was ❌) | ✅ edits anywhere, "use the project's place" (was ❌: fixed paths) |
+| project scripts (`./scripts/test.sh`, `./gradlew`, `just`, `task`) | ✅ (was ❌: no rule matched) | ✅ (was ❌) | ✅ | n/a |
+| no tests at all | ✅ instructed: smallest test setup or commands with output | ✅ "not run" is stated, CI or reading is the basis | ✅ writes the first ones | ✅ |
+| no CI | ✅ local checks are the evidence; `ci-green` cannot be met and the lead says so | ✅ | ✅ | ✅ |
+| tests need Docker, Postgres or Redis | ⚠️ in-process or mise-provided alternative, otherwise CI is the evidence (X-1) | ⚠️ same, named in the review | ⚠️ BLOCKED when the app itself needs it | ✅ |
+| no browser UI (API, CLI, library) | ✅ | ✅ | ✅ API and CLI end to end (was BLOCKED) | ✅ |
+| page loads fonts or CDN scripts | n/a | n/a | ✅ common font and script CDNs allowed (was ⚠️ T-3); other hosts are mocked | n/a |
+| preview or staging URL | n/a | n/a | ❌ host not on the list; BLOCKED with the host name (X-2) | n/a |
+| issues disabled on GitHub | ✅ | ⚠️ issue-checker has nothing to do | ✅ reports in the PR | ⚠️ instructed fallback: checklist in the channel or a file |
+| private repository | ✅ read scopes repeated in every credential list (was ❌ for pr-checker, issue-checker, consultant: `gh pr checks` would 403) | ✅ | ✅ | ✅ |
+| PR from a fork | n/a | ✅ public fork; ❌ private fork without access | ✅ | n/a |
+| default branch not `main` or `master` | ✅ instructions say "default branch"; the push deny rules only name main and master, the credential refuses the rest | ✅ | ✅ | ✅ |
+| protected branches, required reviews | ✅ nothing pushes there | ✅ | ✅ | ✅ |
+| reviewer and author share one GitHub identity | n/a | ✅ instructed fallback: COMMENT review with "Verdict:" line (was ⚠️ R-7) | n/a | n/a |
+| empty repository (no commit) | ❌ nothing to branch from; a human makes the first commit (project-setup kickoff) | n/a | n/a | ⚠️ |
+| no repository attached to the project | ⚠️ house rule: ask with QUESTION | ⚠️ same | ⚠️ same | ✅ planner, PM, consultant can work in chat |
+| git submodules, Git LFS | ⚠️ public submodules ✅ (`git submodule update`); private ones and LFS objects depend on the gateway credential and the LFS host | ⚠️ | ⚠️ | ✅ |
+
+### 9.4 Situations
+
+| Situation | What happens now |
+|---|---|
+| Base moved under a pushed PR branch | developer merges the base (`git merge origin/<base>`); never a force push (was contradictory: "rebase, never force-push") |
+| Several developers of a flock and PROGRESS.md | only the lead writes it (was: every developer, so every PR conflicted) |
+| CI red for a reason outside the change | developer or devops reruns once (`gh run rerun --failed`) and names it |
+| Developer finds an unrelated bug | files an issue (`issues:write`), keeps the PR small |
+| Tester's screenshots for other agents | committed and pushed next to the report; the path and branch are named (was: a path inside the tester's pod) |
+| pr-checker runs again on an updated PR | updates its one comment in place through `gh api` (was: a new comment each time) |
+| Watchdog replaces a stuck agent, resumer respawns one | `commands: fly` (and `land`) granted (section 8) |
+| A lead spawns its members | `lead_commands` now include `fly`; breeds with `may_spawn` carry `fly` for work outside a flock; the validator checks both |
+| A needed scope is not granted by the gateway | the breed posts BLOCKED at that step and names the scope or file; nothing else stops |
+| WebFetch to a documentation host | ✅ now. Before, the rules were written as `domain:<host>`, which flokpit renders as `WebFetch(domain:domain:<host>)`: no fetch ever matched |
+| An agent needs a current fact (API change, error message) | WebSearch for every breed (provider-side, no egress needed) |
+| Pipes, `cd`, `cat`, `ls` | allowed for every breed in `_base` (flokpit#255 found them denied) |
+
+### 9.5 Permission decisions of this pass
+
+| Decision | Reason | What still protects |
+|---|---|---|
+| `bash: {"*": allow}` for the nine breeds that run project code | per-command rules failed in every stack they did not list; interpreters were already allowed | deny rules for default-branch pushes, force pushes, merges, deletes, tags, publishing; pod without root or Docker; proxy; credential |
+| edits anywhere in the checkout for every breed that writes | layouts differ; fixed paths blocked monorepos and other conventions | instructions name what a breed may change; reviewers and checkers cannot commit or push; review before merge; humans merge |
+| one egress list in `_base`, with documentation hosts and font and script CDNs | per-breed lists dropped base entries (lists replace) and blocked lookups | read-only hosts; no credential to publish anywhere |
+| WebFetch `*` and WebSearch for all | lookups instead of guesses | the proxy list; web content is data, not instructions (house rule) |
+| `curl` and `wget` for breeds that run code | health checks and API tests | the proxy list |
+| `issues:write` for developer, reviewer, tester | findings outside the task need a place | no delete rule; the gateway scope has no delete |
+| `workflows:write`, `actions:write` for developer and devops | CI files are code; a workflow change is reviewed like any PR | own branch only; review; the gateway |
+| `contents:write-integration-branch` for every breed that delivers into a flock branch | authors merge approved work themselves | never the default branch; approval by instruction, checked by the lead |
+| issue-checker runs project commands, not only `mise run` | projects without mise could never be reproduced | it runs the project's commands, never a command copied from the issue text; pod and proxy; `issues:write` is its only write scope |
+| higher memory for issue-checker (6Gi) | same builds as the developer, where 3Gi was OOMKilled | - |
+
+Kept on purpose: no `sudo`, no `kubectl`, no subagents of the CLI, read
+denies for `/proc`, service account and credential files, no merge into the
+default branch, no tags or publishing, planner without project execution,
+watchdog and resumer without a shell.
+
+### 9.6 What depends on flokpit
+
+| # | Item | Until then |
+|---|---|---|
+| X-1 | Service containers (Postgres, Redis) or Docker for tests | CI is the evidence; stated in PR and review |
+| X-2 | A human-supplied extra egress host per flight (preview URLs, private registries) | tester and devops post BLOCKED with the host |
+| X-3 | Registries missing from the toolchain hosts: Maven Central, Gradle plugin portal, NuGet, Packagist, Docker Hub metadata | JVM, .NET and PHP projects install nothing in the pod |
+| X-4 | Gateway: the new scopes of CONCEPT 5.8, and whether `write-own-branch` covers a `flokpit/*` branch of an earlier agent | affected steps post BLOCKED; listed per use case in 9.2 |
+| X-5 | Distinct GitHub identities for reviewing breeds (F-8) | the "Verdict:" comment fallback |
+| X-6 | The lead of a standing flock (maintenance) outliving its idle timeout | fly again, or roost the formation daily |
+| X-7 | Whether a replacement flown by the watchdog joins the flock of the agent it replaces (W-2) | a flock's lead is never replaced (the watchdog tells it); for other members it is unverified |
+
+Not executed: everything in this section. The first real check is a flight
+of each formation against toy-example-bun and against one repository that is
+not flokpit-compatible.
