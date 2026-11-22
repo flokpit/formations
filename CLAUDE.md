@@ -83,9 +83,13 @@ change to `breeds/`, `formations/`, `events/` or `specs/`; dependencies come fro
 metadata via `uv`:
 
 ```sh
-uv run scripts/validate.py              # all breeds and formations
-uv run scripts/validate.py breeds/x.yaml  # errors for these files only
+mise run test                 # all breeds and formations (uv run scripts/validate.py)
+mise run test breeds/x.yaml   # errors for these files only
+mise run check                # plus docs:check and shellcheck; the done gate
 ```
+
+The toolchain is pinned in `mise.toml` (python, uv, shellcheck; `mise install`); its task names follow
+`docs/FLOKPIT_PROJECT_COMPAT.md`, so flokpit's breeds can work here.
 
 A new field needs a schema change first: unknown keys are rejected.
 
@@ -133,8 +137,8 @@ An Open Knowledge Format v0.2 bundle
 Commands:
 
 ```sh
-python3 scripts/okf.py index docs/resources   # regenerate all index.md files
-python3 scripts/okf.py check docs/resources   # OKF conformance, footnotes, links
+mise run docs:index   # regenerate all index.md files (python3 scripts/okf.py index docs/resources)
+mise run docs:check   # OKF conformance, footnotes, links (python3 scripts/okf.py check docs/resources)
 ```
 
 Run `check` before committing changes to the bundle.

@@ -1,0 +1,49 @@
+# Toolchain and tasks of formations. Everything a developer, a CI runner or a flokpit agent needs comes from
+# `mise install`; the host (or the agent container) only provides git and mise. The task names follow the
+# contract of docs/FLOKPIT_PROJECT_COMPAT.md, so flokpit's breeds can work on this repository too.
+#
+#   mise run test           validate every breed, formation and event file (scripts/validate.py)
+#   mise run check          what CI runs, plus the docs bundle and the shell script
+#   mise run build          the release archive and its .sha256 under dist/ (what a v* tag publishes)
+#   mise tasks              everything else
+#
+# There is no application: no start, e2e or ui-test. Personal overrides go to mise.local.toml (gitignored).
+min_version = "2026.1.0"
+
+[tools]
+python = "3.13.18"     # scripts/okf.py, and the interpreter uv runs scripts/validate.py with (requires-python >= 3.11)
+uv = "0.11.8"          # runs scripts/validate.py with its inline dependencies (PEP 723)
+shellcheck = "0.11.0"  # scripts/build-archive.sh
+
+[env]
+UV_PYTHON_DOWNLOADS = "never"   # use the python above; an agent pod reaches no python download host but GitHub
+
+[tasks.test]
+description = "Validate breeds/, formations/ and events/ against specs/ plus the cross-file rules (scripts/validate.py)"
+usage = 'arg "[file]" var=#true help="Only these files; the cross-file rules still use all breeds"'
+run = "uv run scripts/validate.py {{arg(name='file', var=true, default='')}}"
+
+[tasks.validate]
+description = "Alias of test"
+depends = ["test"]
+
+[tasks."docs:check"]
+description = "OKF conformance, footnotes and links of the docs/resources bundle"
+run = "python scripts/okf.py check docs/resources"
+
+[tasks."docs:index"]
+description = "Regenerate every index.md of docs/resources from the concept frontmatter"
+run = "python scripts/okf.py index docs/resources"
+
+[tasks.lint]
+description = "shellcheck of scripts/build-archive.sh (warnings and errors fail)"
+run = "shellcheck -S warning scripts/build-archive.sh"
+
+[tasks.check]
+description = "The done gate: validation, the docs bundle and the shell script"
+depends = ["test", "docs:check", "lint"]
+
+[tasks.build]
+description = "The reproducible release archive dist/formations-<ref>.tar.gz and its .sha256 (scripts/build-archive.sh)"
+usage = 'arg "[ref]" default="dev" help="Tag or name in the file name, e.g. v0.8.0"'
+run = "mkdir -p dist && scripts/build-archive.sh dist/formations-{{arg(name='ref', default='dev')}}.tar.gz"

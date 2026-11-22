@@ -35,15 +35,31 @@ jobs:
         file: ${{ fromJSON(needs.discover.outputs.files) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv run scripts/validate.py "$FILE"
+      # python and uv from mise.toml, the same versions as developers and flokpit agents use
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+      - run: mise run test "$FILE"
         env:
           FILE: ${{ matrix.file }}
+
+  check:
+    name: docs bundle and shell script
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+      - run: mise run docs:check
+      - run: mise run lint
 
   release:
     name: publish archive as a GitHub release
     # Only for tags v*, and only after every validation job succeeded (needs fails closed).
-    needs: validate
+    needs: [validate, check]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

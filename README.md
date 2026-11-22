@@ -47,10 +47,17 @@ how the channel works: [`docs/decisions/`](docs/decisions/).
 
 ## Work on this repository
 
+The toolchain (python, uv, shellcheck) and the tasks come from [`mise.toml`](mise.toml):
+
 ```sh
-uv run scripts/validate.py                 # all breeds and formations
-uv run scripts/validate.py breeds/x.yaml   # just these files
+mise install                    # once
+mise run test                   # validate all breeds, formations and events
+mise run test breeds/x.yaml     # just these files
+mise run check                  # validation, the docs bundle and the shell script
+mise run build v0.8.0           # dist/formations-v0.8.0.tar.gz and its .sha256
 ```
+
+Without mise, `uv run scripts/validate.py [FILE...]` still works.
 
 CI runs the validator once per file on every push to `main` and every pull
 request. A new field needs a schema change first: unknown keys are rejected.
