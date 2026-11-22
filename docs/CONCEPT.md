@@ -429,6 +429,57 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | X-6 | Update `flokpit:docs/concepts/agent_spawner.md` (section 8), `temporal.md` (flocks) and `docs/log.md` in the same PRs. |
 | X-7 | The renderer SHOULD be structured so that a second agent CLI (for example Codex) can be added as another target without touching breed files. |
 
+### 7.6 What flokpit v2 reads
+
+Checked against `flokpit/flokpit` `main` at `b3da0d3` (2026-11-21; formations pin
+`v0.6.0`; code: `breedFromFile` and `formationFromDoc` in
+`packages/api/src/builtin.ts`, `v2SystemPrompt` in `packages/spawner/src/claude-engine.ts`,
+`startMember` in `packages/temporal/src/flock/logic.ts`). States: **read** (reaches
+the run), **not read**, **shape differs** (read under another shape). Anything
+marked *not read* MUST NOT be relied on until the requirement below is met.
+
+Breed fields:
+
+| Field | State | Note |
+|---|---|---|
+| `name`, `description` | read | marketplace |
+| `model` | shape differs | first candidate only; `class`, `effort`, `overridable` and the fallbacks are not read |
+| `commands` | read | |
+| `workspace` | read | `clone: false` becomes `none` |
+| `instructions`, `house_rules` | not read | V-1: the v2 system prompt is fixed text |
+| `tools`, `credentials`, `os` | not read | V-1: fixed `V2_ALLOW` and `DEFAULT_DENY` for every breed |
+| `runtime` (`image`, `features`) | not read | V-1: every pod runs `agent:main`; `runtime.image: browser` of the tester is unused |
+| `limits` | not read | `max_turns` is not read, `max_budget_usd` is mapped when above 0 |
+| `pod`, `lifecycle`, `skills`, `privileges`, `roosts`, `handoff` | not read | |
+| `requires` | not read | V-5; v2 has its own `Breed.requires` |
+| `apiVersion`, `kind`, `extends`, `status` | not read | `status` is V-6; `extends` is resolved by the validator, not by flokpit |
+
+Formation fields:
+
+| Field | State | Note |
+|---|---|---|
+| `name`, `description` | read | |
+| `lead` | shape differs | `lead.breed` only; `overrides` not read |
+| `members` | shape differs | `breed`, `count.min`, `count.max`; `start` and `overrides` not read |
+| `lead_commands`, `member_commands` | not read | V-2: dropped, so no lead has `fly` |
+| `termination`, `limits` | shape differs | V-2 and the mapping below |
+| `kickoff`, `work_split`, `member_brief` | not read | V-3: every member gets the whole flock task |
+| `spawn_tree`, `roosts`, `handoffs`, `state`, `verification`, `channel`, `escalate_to_human`, `integration_branch`, `shape`, `status` | not read | |
+
+Mapping of the guards (X-2: these schemas are the contract): flokpit reads
+`termination.conditions[].no_progress_rounds` into its `termination.no_progress_rounds`, `limits.max_lifetime`
+into `termination.max_lifetime`, and `limits.turn_budget` into its flock turn budget. It does not
+add a second shape of its own.
+
+| Id | Requirement |
+|---|---|
+| V-1 | The v2 run MUST get the breed's `instructions` + `house_rules` as system prompt, the rendered tool rules (`renderToolPermissions`), the breed's `runtime.image` and its limits (today: fixed prompt, `V2_ALLOW`/`DEFAULT_DENY`, `agent:main`). |
+| V-2 | `formationFromDoc` MUST keep `lead_commands`, `member_commands`, `limits` and `termination`, mapped as above. |
+| V-3 | The lead's first message MUST be built from `kickoff` and `work_split`, a member's from `member_brief` (plus its `brief`) with `{lead}` rendered; no member gets the bare task. |
+| V-4 | A field of the pinned archive that flokpit drops MUST fail a flokpit test: render the archive and assert that every schema field is consumed or listed as ignored. |
+| V-5 | `requires` of a breed (and the union over a formation's participants) MUST be checked before take-off. |
+| V-6 | The marketplace MUST show `status: proposal`. |
+
 ## 8. Success criteria
 
 | Id | Criterion | How to check |
@@ -451,6 +502,12 @@ Each phase is one or more PRs with tests; no phase may break `bun run smoke`.
 | SC-15 | No flock member can merge to the default branch | tool rendering test and one real attempt |
 | SC-16 | Docs updated (X-6) | review |
 | SC-17 | A reviewer's `gh pr review --approve` on a developer's PR succeeds (different identities) | one real run |
+| SC-18 | A v2 `tester` run has the tester's system prompt, its tool rules and the `browser` image (V-1) | `RunSpec` test on the pinned archive |
+| SC-19 | A flock of `ui-bugfixing` has a lead that can `/fly`, and the flock's limits and termination in its entity (V-2) | `formationFromDoc` test |
+| SC-20 | No member's first message is the bare task; the lead's is built from `kickoff` and `work_split`, a member's from `member_brief` with the lead's handle (V-3) | workflow test |
+| SC-21 | Dropping or renaming a schema field of the archive fails a flokpit test (V-4) | the archive consumption test |
+| SC-22 | A flock whose participants require a missing connection does not take off (V-5) | api test |
+| SC-23 | The flight check `docs/FLIGHTCHECK.md` passes once for `ui-bugfixing` and `feature-team` on `toy-example-bun` | one real run per formation, before the tag |
 
 ## 9. Non-goals
 
