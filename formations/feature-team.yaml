@@ -118,6 +118,12 @@ escalate_to_human:
   - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
   - same_item_failed_review_twice
 
+member_brief: |
+  You are a member of the flock {flock}; {lead} leads it. The flock's task is:
+  {task}
+  Do not start on it. Say once that you are ready and wait for your part from
+  {lead}.
+
 kickoff: |
   Post the task as you understood it and the acceptance criteria you derived,
   with intent QUESTION if anything is unclear; wait for an answer before

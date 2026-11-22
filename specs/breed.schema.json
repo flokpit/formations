@@ -102,6 +102,15 @@
     "credentials": {
       "$ref": "#/$defs/credentials"
     },
+    "requires": {
+      "description": "Event sources (events/catalogue.yaml) and services the breed cannot work without; flokpit checks them before take-off. A formation's requirements are the union of its participants'.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      }
+    },
     "handoff": {
       "$ref": "#/$defs/handoff"
     }
@@ -579,7 +588,8 @@
             "lifecycle",
             "tools",
             "privileges",
-            "roosts"
+            "roosts",
+            "requires"
           ],
           "properties": {
             "kind": {

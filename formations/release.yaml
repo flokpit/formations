@@ -122,6 +122,12 @@ escalate_to_human:
   - budget_or_lifetime_extension
   - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
 
+member_brief: |
+  You are a member of the flock {flock}; {lead} leads it. The flock's task is:
+  {task}
+  Do not start on it. Say once that you are ready and wait for your part from
+  {lead}.
+
 kickoff: |
   Post how this project releases as you read it from the repository, the
   list of changes since the last tag and the version you propose, with

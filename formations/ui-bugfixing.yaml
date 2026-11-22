@@ -18,9 +18,16 @@ members:
   - breed: tester
     count: { min: 1, max: 1 }
     start: with_flock
+    brief: |
+      Start at once: start the application (`mise run start`, else per the
+      project's AGENTS.md or CLAUDE.md), explore it as your instructions say
+      and post one message per problem to {lead}. If the browser image is
+      missing, post BLOCKED.
   - breed: developer
     count: { min: 3, max: 3 }
     start: with_flock
+    brief: |
+      Check out {integration_branch} and wait for a fix assigned by {lead}.
     overrides:
       limits: { max_turns: 256 } # small fixes; narrowed from the breed's 512 (was 40)
       lifecycle: { max_lifetime: 4h }
@@ -109,12 +116,15 @@ escalate_to_human:
   - budget_or_lifetime_extension
   - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
 
+member_brief: |
+  You are a member of the flock {flock}; {lead} leads it. There is no task:
+  the tester finds problems, {lead} decides who fixes which, the developers
+  merge fixes into {integration_branch}.
+
 kickoff: |
   Check with `git ls-remote origin {integration_branch}` that the branch
   exists. If not, ask the first developer in the channel to create it from
   the default branch and push it; you cannot push. Announce the branch.
-  Tell the tester to start the application (`mise run start`, else per the
-  project's AGENTS.md or CLAUDE.md) and begin exploring (the tester needs the
-  browser image; if it reports BLOCKED, tell the human).
-  Tell each developer to check out {integration_branch} and wait for an
-  assignment.
+  The tester starts exploring on its own and the developers wait for you
+  (their first message says so); if the tester reports BLOCKED (it needs the
+  browser image), tell the human.

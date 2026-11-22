@@ -39,6 +39,14 @@ created from one of them and may override the filters
 short-lived: the channel history is their memory, and they call `chat_done`
 and stop when their pass is over.
 
+What flokpit v2 reads of a breed today, field by field:
+[`docs/CONCEPT.md`](../docs/CONCEPT.md) section 7.6. A field marked *not read*
+there has no effect on a hosted agent yet.
+
+What flokpit v2 reads of a breed today, field by field:
+[`docs/CONCEPT.md`](../docs/CONCEPT.md) section 7.6. A field marked *not read*
+there has no effect on a hosted agent yet.
+
 ## Schema (`formations/v1alpha1`)
 
 Machine-readable: [`specs/breed.schema.json`](../specs/breed.schema.json).
@@ -53,7 +61,7 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `pod` | 1. pod specification | `resources.requests`, `resources.limits` (Kubernetes quantities), `workspace_size` |
 | `os` | 2. OS-level permissions | `user`, `sudo`, `root_filesystem`, `writable_paths`, `tmp_size`, `network.egress` (`none`, `allowlist`), `network.allow` (domains) |
 | `skills` | 3. skills | list of `{source, ref, path, license, review, name?}`; `source` is a GitHub repository or `local:<path>`, `ref` a commit; optional `name` is the install directory (`^[a-z0-9][a-z0-9._-]{0,63}$`), defaulting to the last segment of `path` |
-| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` |
+| `instructions`, `house_rules` | 4. main instruction | rendered into `AGENTS.md` (instructions first, then house rules); placeholders `{nick}`, `{spawner}`, `{channel}`, `{branch}`, `{repo}` (an unknown `{word}` is a validator error). `house_rules` is set only in `_base.yaml`, the flock rules included ("In a flock:" / "Leading a flock:"); breeds add behaviour to `instructions` |
 | `runtime` | 5. runtime features | `image` (`base` or a variant), `features` (Dev Container Feature references with `options`). The image carries no project toolchain: a repository declares its tools in `mise.toml` and flokpit installs them at boot; the tasks a project provides per breed are in [`docs/FLOKPIT_PROJECT_COMPAT.md`](../docs/FLOKPIT_PROJECT_COMPAT.md) |
 | `model` | 6. model choice | `class` (`frontier`, `balanced`, `fast`), `effort`, `overridable`, `candidates` (ordered list of `{provider, id, effort?}`; see below) |
 | `limits` | 7. limits and budgets | `max_turns`, `max_budget_usd` (0 = no cap), `summary_budget_usd`, `tighten_only` |
@@ -62,6 +70,7 @@ and scalars replace. `_base.yaml` is not a breed and cannot be spawned.
 | `privileges` | 10. spawn and chat | `may_spawn` (breed names), `chat.mode` (`voice` = `+v`), `chat.op` (v1 leftover: flokpit v2 has no channel operators and ignores it) |
 | `commands` | 10a. chat commands | flokpit v2 commands the agent may use: any of `fly`, `land`, `kick`, `rename`, `set`, `trigger`, `meta`, `honk`; a list that is missing or empty grants nothing (flokpit then applies its shipped default `[honk]`). `fly` needs a non-empty `may_spawn` (validator). `_base` grants `honk`; every breed with a `may_spawn` list adds `fly`, `watchdog` also `land`; lists replace |
 | `roosts` | 11. preconfigured roosts | required; list of `{name, description, filter, task, max_concurrent?, cooldown?}` (empty for a breed that is never roosted); `filter` is a filter expression (`event_name_filter`, `event_detail_filter`) over [`events/catalogue.yaml`](../events/catalogue.yaml), `task` a template with `{<detail key>}` placeholders; a roost instance is created from one entry (its preset) and may override the filters; the validator checks that every filter names declared events and filterable details ([`docs/ROOST.md`](../docs/ROOST.md) sections 3, 4 and 8) |
+| `requires` | preconditions | optional list of event-catalogue sources (and services) the breed cannot work without; flokpit checks them before take-off, a formation's are the union of its participants'. `_base` sets `[github]` (every breed has `credentials.github`); lists replace, so a breed without GitHub sets `[]`. The validator requires `github` when a breed has a GitHub credential or a `github.event.*` roost |
 | `workspace`, `credentials`, `handoff` | later features | repository clone and branch prefix; GitHub access requested from the flokpit gateway (`contents:write-integration-branch` allows pushing to a formation's `integration_branch`, never the default branch); what the breed must deliver when done |
 
 ## Permission design

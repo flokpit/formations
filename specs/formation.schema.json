@@ -22,7 +22,9 @@
     "limits",
     "channel",
     "escalate_to_human",
-    "kickoff"
+    "kickoff",
+    "lead_commands",
+    "member_commands"
   ],
   "properties": {
     "apiVersion": {
@@ -142,6 +144,11 @@
               "on_demand",
               "on_roost"
             ]
+          },
+          "brief": {
+            "description": "Appended to member_brief for this breed.",
+            "type": "string",
+            "minLength": 1
           },
           "overrides": {
             "$ref": "#/$defs/overrides"
@@ -344,6 +351,11 @@
       "minItems": 1
     },
     "kickoff": {
+      "type": "string",
+      "minLength": 1
+    },
+    "member_brief": {
+      "description": "First message of every with_flock and on_demand member, in place of the task. Placeholders as in kickoff plus {lead}, the handle of the flock's lead.",
       "type": "string",
       "minLength": 1
     }

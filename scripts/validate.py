@@ -21,7 +21,15 @@ Schema cannot express are checked here:
   formations  file name = name; lead and member breeds exist; count.min <= max;
               spawn_tree only narrows the breeds' may_spawn and only names
               participants; overrides only lower limits and only add denies;
-              handoffs only between participants; max_agents >= lead + all max
+              handoffs only between participants; max_agents >= lead + all max;
+              member_brief (containing {lead}) when members start with the flock
+              or on demand; member_failed_to_start escalation when a member
+              starts with the flock; limits_reached terminates; texts use only
+              known placeholders
+  all         `{word}` placeholders in breed and formation texts are known (an
+              unknown one reaches the agent as written); `house_rules` only in
+              _base.yaml; `requires` names catalogue sources, and `github` is
+              required with a GitHub credential or a github.event.* roost
 """
 import fnmatch
 import json
@@ -81,6 +89,32 @@ def schema_errors(validator, doc):
     ]
 
 
+BREED_PLACEHOLDERS = {"nick", "spawner", "channel", "branch", "repo"}
+FORMATION_PLACEHOLDERS = {"flock", "task", "repo", "spawner", "date", "integration_branch", "lead"}
+
+
+def strings(node, skip=()):
+    """Every string in a document, with its path; keys in `skip` are not entered."""
+    if isinstance(node, str):
+        yield "", node
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            if key not in skip:
+                for path, text in strings(value):
+                    yield f"{key}/{path}".rstrip("/"), text
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            for path, text in strings(value):
+                yield f"{i}/{path}".rstrip("/"), text
+
+
+def check_placeholders(rel, doc, known, errors, skip=()):
+    for path, text in strings(doc, skip):
+        for word in sorted(set(re.findall(r"\{([a-z][a-z0-9_]*)\}", text))):
+            if word not in known:
+                errors.append(f"{rel}: {path}: unknown placeholder {{{word}}} (known: {', '.join(sorted(known))})")
+
+
 def read_yaml(path, errors):
     try:
         doc = yaml.safe_load(path.read_text())
@@ -108,6 +142,11 @@ def pattern_matches(pattern, value):
         if "*" in pattern or "?" in pattern:
             return isinstance(value, str) and fnmatch.fnmatchcase(value, pattern)
     return pattern == value
+
+
+def pattern_matches_any(glob, names):
+    """True when a glob (e.g. github.event.*) covers any of the names a filter lists."""
+    return any(fnmatch.fnmatchcase(n, glob) for n in (names if isinstance(names, list) else [names]))
 
 
 def check_roost_filter(where, flt, task, declared, errors):
@@ -193,6 +232,10 @@ def check_breeds(schemas, errors, catalogue=None):
         # Keep invalid breeds too, so references to them are checked against
         # what is there instead of cascading into "unknown breed" errors.
         raw[path.stem] = (rel, doc)
+        check_placeholders(rel, {k: doc[k] for k in ("instructions", "house_rules", "lifecycle") if k in doc},
+                           BREED_PLACEHOLDERS, errors)
+        if doc.get("kind") == "Breed" and "house_rules" in doc:
+            errors.append(f"{rel}: house_rules may only be set in breeds/_base.yaml")
 
     for name, (rel, doc) in raw.items():
         if doc.get("kind") != "Breed":
@@ -211,6 +254,15 @@ def check_breeds(schemas, errors, catalogue=None):
 
     for name, (rel, breed) in resolved.items():
         check_breed_roosts(rel, breed, catalogue, errors)
+        requires = breed.get("requires", [])
+        if catalogue is not None:
+            for source in requires:
+                if source not in catalogue["sources"]:
+                    errors.append(f"{rel}: requires/{source} is not a source of events/catalogue.yaml")
+        github_roost = any(pattern_matches_any("github.event.*", r["filter"]["event_name_filter"])
+                           for r in breed.get("roosts", []))
+        if (breed.get("credentials", {}).get("github") or github_roost) and "github" not in requires:
+            errors.append(f"{rel}: has a GitHub credential or a github.event.* roost but requires lacks 'github'")
         for target in breed.get("privileges", {}).get("may_spawn", []):
             if target not in resolved:
                 errors.append(f"{rel}: privileges/may_spawn names unknown breed {target!r}")
@@ -279,7 +331,7 @@ def check_formations(schemas, breeds, errors, catalogue=None):
                     errors.append(f"{rel}: spawn_tree/{spawner} adds {target!r}, not in the breed's may_spawn {allowed}")
                 if target not in participants:
                     errors.append(f"{rel}: spawn_tree/{spawner} names {target!r}, which is not a member")
-        if doc["spawn_tree"].get(lead) and "lead_commands" in doc and "fly" not in doc["lead_commands"]:
+        if doc["spawn_tree"].get(lead) and "fly" not in doc["lead_commands"]:
             errors.append(f"{rel}: the lead spawns {doc['spawn_tree'][lead]} but lead_commands does not grant 'fly'")
         spawnable = {t for targets in doc["spawn_tree"].values() for t in targets}
         for i, member in enumerate(doc["members"]):
@@ -313,6 +365,16 @@ def check_formations(schemas, breeds, errors, catalogue=None):
         for i, member in enumerate(doc["members"]):
             if member["start"] == "on_roost" and member["breed"] not in roosted:
                 errors.append(f"{rel}: members/{i} starts on_roost but no roost of the formation names {member['breed']!r}")
+
+        check_placeholders(rel, doc, FORMATION_PLACEHOLDERS, errors, skip=("roosts", "description"))
+        started = {m["start"] for m in doc["members"]}
+        if started & {"with_flock", "on_demand"} and "{lead}" not in doc.get("member_brief", ""):
+            errors.append(f"{rel}: members start with the flock or on demand, so member_brief is required and must contain {{lead}}")
+        if any(m["start"] == "with_flock" and m["count"]["min"] > 0 for m in doc["members"]) \
+                and "member_failed_to_start" not in doc["escalate_to_human"]:
+            errors.append(f"{rel}: a with_flock member has count.min > 0, so escalate_to_human must list member_failed_to_start")
+        if "limits_reached" not in doc["termination"]["conditions"]:
+            errors.append(f"{rel}: termination/conditions must contain limits_reached")
 
         needed = 1 + sum(m["count"]["max"] for m in doc["members"])
         if doc["limits"]["max_agents"] < needed:

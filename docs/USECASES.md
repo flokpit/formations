@@ -846,6 +846,7 @@ differs from 9.5.
 
 | # | Item | Until then |
 |---|---|---|
+| X-8 | Everything in CONCEPT 7.6: v2 reads neither `instructions`, `house_rules`, `tools`, `runtime.image` nor `lead_commands`, `kickoff`, `member_brief` (V-1 to V-6) | no rule of section 10 reaches an agent; the flight check (`docs/FLIGHTCHECK.md`) cannot pass |
 | X-1 | Service containers (Postgres, Redis) or Docker for tests | CI is the evidence; stated in PR and review |
 | X-2 | A human-supplied extra egress host per flight (preview URLs, private registries) | tester and devops post BLOCKED with the host |
 | X-3 | Registries missing from the toolchain hosts: Maven Central, Gradle plugin portal, NuGet, Packagist, Docker Hub metadata | JVM, .NET and PHP projects install nothing in the pod |
@@ -857,3 +858,23 @@ differs from 9.5.
 Not executed: everything in this section. The first real check is a flight
 of each formation against toy-example-bun and against one repository that is
 not flokpit-compatible.
+
+## 10. Fourth pass: conversations (2026-11-22)
+
+Sources: flokpit/flokpit#325 (two live sessions on `toy-example-bun`) and
+issue #19. Sections 1 to 9 walk permissions; these walks follow the chat. Method
+as before, **paper simulation**: every walk assumes the wiring of CONCEPT 7.6
+(V-1 to V-3) exists, since v2 does not read these texts today (9.6, X-8).
+
+| # | Walk | What went wrong in the run | The rule that covers it | Where checked |
+|---|---|---|---|---|
+| 10.1 | A member starts before the lead has spoken (`ui-bugfixing`, `feature-team`) | `developer-1` skipped the planner's triage; the tester pushed a fix to the integration branch; the reviewer handed out a second work order next to the lead's | house rules "In a flock" (the lead owns the task, a member waits and says so once, never hands out work); `member_brief` instead of the task; the tester never changes application code | FLIGHTCHECK 1, 2 |
+| 10.2 | An acknowledgement after DONE | the lead answered a DONE with "nothing changes", and the developer answered that; about a third of 92 turns were echoes | house rules: a message that asks nothing and changes nothing gets no answer; one post per result; `@handle` only when the agent has to act | FLIGHTCHECK 2, 3 |
+| 10.3 | Two work orders in `feature-team` | one footer was built and approved twice (68 turns): lead and reviewer each assigned it | the lead gives every member its part by `@handle`; members never hand out work; the reviewer reviews | FLIGHTCHECK 1 |
+| 10.4 | A required member fails at take-off | two of three required developers did not start and nobody was told | `escalate_to_human: member_failed_to_start`; the lead raises a honk when it cannot finish; the validator demands the entry | FLIGHTCHECK 4 |
+| 10.5 | Check results cannot be read | the planner lead reported "I can't read the check results with my access" | house rules: when something the instructions rely on cannot be read, say so; unread is never green | review of the pull request text |
+
+Not walked: the tester's background start of the server (denied in the run). Its
+cause is not established; it needs a reproduction in a v2 pod before the tester's
+text says anything about it (issue #19, "Blocked on a reproduction").
+
