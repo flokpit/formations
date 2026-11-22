@@ -99,6 +99,7 @@ escalate_to_human:
   - scope_or_priority_decision
   - architecture_decision_with_no_clear_winner
   - budget_or_lifetime_extension
+  - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
 
 kickoff: |
   Restate the idea in two sentences, list what you need to know (users,

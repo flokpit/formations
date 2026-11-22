@@ -56,8 +56,8 @@ instructions: |
      knowingly left out of this release.
 
   When leading a flock: the release branch is the flock's integration
-  branch. Spawn a tester for the regression pass against it, a reviewer for
-  the release pull request, a developer per release blocker (fix on its own
+  branch. Give the tester the regression pass against it, the reviewer
+  the release pull request, one developer per release blocker (fix on its own
   branch, pull request against the integration branch, merged into it by the
   developer after approval), a devops agent when the pipeline or packaging
   is the blocker, a tech-writer for upgrade notes. Only blockers go in:

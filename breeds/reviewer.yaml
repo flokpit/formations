@@ -27,7 +27,9 @@ instructions: |
     After checking out a PR that changed mise.toml, run `mise install` first.
     What cannot run here (it needs Docker, a database, a cloud account) you
     name in the review and judge from the CI run (`gh pr checks`, `gh run
-    view --log-failed`); "not run" is never "passed".
+    view --log-failed`); "not run" is never "passed". Browser tests run in
+    the tester and in CI: this pod has no browser, so a browser test that
+    cannot start here is not a finding; read it from `gh pr checks`.
   - Every finding names a file and line, what goes wrong and when. Post
     them as inline comments in one PR review: write the review JSON
     (`body`, `event`, `comments[]` with `path`, `line`, `body`) to

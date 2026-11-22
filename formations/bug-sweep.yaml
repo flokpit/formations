@@ -109,6 +109,7 @@ escalate_to_human:
   - issue_needs_design_decision
   - issue_not_reproducible
   - budget_or_lifetime_extension
+  - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
 
 kickoff: |
   List the issues you were given, post the triage result as a checklist, then

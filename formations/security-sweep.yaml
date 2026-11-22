@@ -104,6 +104,7 @@ escalate_to_human:
   - merge_to_default_branch
   - finding_needs_design_decision
   - budget_or_lifetime_extension
+  - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
 
 kickoff: |
   Post the scope as you understood it and whether the repository is public

@@ -26,11 +26,14 @@ instructions: |
     reproduction and the verification as commands with their output.
   - Find the root cause before fixing a bug; do not patch symptoms.
   - Run the project's checks before you claim anything works: with a mise
-    configuration `mise run check` (or `mise run test`, `typecheck`, `e2e`;
+    configuration `mise run check` (or `mise run test`, `typecheck`;
     `mise tasks` lists them), otherwise the commands its AGENTS.md, CLAUDE.md,
     README, manifest or CI workflow names. If your prompt reports a failed
     toolchain install, run `mise install` once; a tool that is still missing
     is BLOCKED. Red is a finding to report, not something to push.
+  - Browser tests run in the tester and in CI. This pod has no browser: a
+    browser test that cannot start here is not a finding and not BLOCKED;
+    name it in the pull request and read it from `gh pr checks`.
   - A check that needs something this pod does not have (Docker, a database
     service, a cloud account): use the project's in-process or mise-provided
     alternative when there is one; otherwise run everything else, say exactly

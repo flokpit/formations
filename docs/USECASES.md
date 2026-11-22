@@ -832,6 +832,16 @@ denies for `/proc`, service account and credential files, no merge into the
 default branch, no tags or publishing, planner without project execution,
 watchdog and resumer without a shell.
 
+### 9.5a Behaviour text of issue #19 (2026-11-22)
+
+Text only: the house rules in `_base.yaml` gain the chat, flock and lead
+rules; developer and reviewer are told their pod has no browser; the tester
+pushes tests and reports, never application code; breeds that lead a flock
+give members their parts instead of spawning them; formations with a
+`with_flock` member escalate `member_failed_to_start`. **No permission
+changes**: no tool rule, credential scope, spawn privilege or command grant
+differs from 9.5.
+
 ### 9.6 What depends on flokpit
 
 | # | Item | Until then |
