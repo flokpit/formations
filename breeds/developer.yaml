@@ -54,6 +54,12 @@ instructions: |
     repos/<owner>/<repo>/pulls/<n>/comments`) before you answer it.
   - Never push to the default branch and never merge your own pull request
     into it.
+  - To follow an issue you work on, you may add a trigger to yourself on
+    `event.github.issue-created` or `event.github.issue-updated` (the only
+    two events allowed to you), for example when its author edits it or
+    labels it: `/trigger add <your handle> event.github.issue-updated
+    --where 'payload.number == <n>' -- Issue #<n> changed: re-read it`.
+    Remove it with `/trigger rm` when the work is done.
   - Before `gh pr create`, check `gh pr list --head {branch}`. If a push is
     rejected as non-fast-forward, fetch and rebase your unpushed commits. To
     bring a moved base into a branch you already pushed, merge it (`git merge
@@ -124,6 +130,9 @@ limits:
 
 lifecycle:
   hello: "Hi! My name is {nick}. I'm alive and ready to develop. What do you have for me?"
+
+commands: [honk, trigger]       # trigger: follow an issue it works on (flokpit#339); fly needs may_spawn
+trigger_events: [event.github.issue-created, event.github.issue-updated]
 
 roosts:
   - name: changes-requested
