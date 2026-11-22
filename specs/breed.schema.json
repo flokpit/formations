@@ -93,6 +93,16 @@
         ]
       }
     },
+    "trigger_events": {
+      "description": "With `trigger` in commands: the flokpit v2 events an agent of this breed may put in a trigger (patterns, * for one segment). Missing: any event.",
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^event(\\.([a-z0-9][a-z0-9-]*|\\*))+$"
+      }
+    },
     "roosts": {
       "$ref": "#/$defs/roosts"
     },

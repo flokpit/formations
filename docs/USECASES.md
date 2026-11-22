@@ -615,6 +615,7 @@ tester turn and echo flocks.
 | every clone answered 407 | agentd cloned without the agent's proxy identity | flokpit (`networkEnv`); nothing in breeds |
 | `mise install` refused: api.npmjs.org, npm.jsr.io, api.osv.dev, tuf-repo-cdn.sigstore.dev | egress allowlist too narrow for toolchain installs | flokpit unions `TOOLCHAIN_EGRESS_HOSTS` (wildcards) into **every** agent's allowlist, also where a breed sets its own `os.network.allow`; breeds therefore list only extra docs hosts |
 | `watchdog` and `resumer` cannot `fly` or `land` | the breeds relied on `privileges.op`, which v2 ignores | **fixed here:** `commands: [honk, fly, land]` and `[honk, fly]`; formations carry `lead_commands`/`member_commands`; the validator rejects `fly` without `may_spawn` |
+| a developer cannot follow an issue it works on | no trigger grant; an agent's `/trigger add` only opened the user's dialog | **fixed here and in flokpit#339:** `commands: [honk, trigger]` with `trigger_events: [event.github.issue-created, event.github.issue-updated]`; flokpit lets an agent add triggers only to itself (or, as the lead, to its flock) and only on those events; the validator rejects `trigger_events` without `trigger` |
 | `ErrImagePull` for the default image | breed named the shipped default image | flokpit; breeds use `runtime.image: base` |
 | turn limit hit in long runs | `max_turns` 15 to 60 | PR #18: 512 per breed, 256 for the flock overrides |
 | a turn's final answer never shown | agent did not call `chat_send` | flokpit; instructions already end with `chat_done`/DONE posts |

@@ -173,6 +173,19 @@ events:
       github.event_detail.author:      { type: string,   description: "GitHub login of the issue author" }
       github.event_detail.url:         { type: string,   description: "HTML URL of the issue", filterable: false }
       github.event_detail.delivery_id: { type: string,   description: "GitHub webhook delivery id (dedupe key)", filterable: false }
+  - name: github.event.issue_updated
+    source: github
+    since: v0.8.0
+    description: An issue was edited, labelled or unlabelled, assigned or unassigned, given or taken a milestone, closed or reopened (flokpit v2 event.github.issue-updated).
+    details:
+      github.event_detail.repo:        { type: string,   description: 'Repository "owner/name" '}
+      github.event_detail.number:      { type: integer,  description: "Issue number", min: 1 }
+      github.event_detail.action:      { type: string,   description: "What changed", enum: [edited, labeled, unlabeled, assigned, unassigned, milestoned, demilestoned, closed, reopened] }
+      github.event_detail.title:       { type: string,   description: "Issue title", filterable: false }
+      github.event_detail.labels:      { type: "string[]", description: "Label names after the change" }
+      github.event_detail.author:      { type: string,   description: "GitHub login of the issue author" }
+      github.event_detail.url:         { type: string,   description: "HTML URL of the issue", filterable: false }
+      github.event_detail.delivery_id: { type: string,   description: "GitHub webhook delivery id (dedupe key)", filterable: false }
   - name: github.event.pull_request_opened
     source: github
     since: v0.4.0

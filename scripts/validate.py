@@ -268,6 +268,8 @@ def check_breeds(schemas, errors, catalogue=None):
                 errors.append(f"{rel}: privileges/may_spawn names unknown breed {target!r}")
         if "fly" in breed.get("commands", []) and not breed.get("privileges", {}).get("may_spawn"):
             errors.append(f"{rel}: commands grants 'fly' but privileges/may_spawn is empty")
+        if breed.get("trigger_events") and "trigger" not in breed.get("commands", []):
+            errors.append(f"{rel}: trigger_events is set but commands does not grant 'trigger'")
         nxt = breed.get("handoff", {}).get("next")
         if nxt and nxt not in resolved:
             errors.append(f"{rel}: handoff/next names unknown breed {nxt!r}")
