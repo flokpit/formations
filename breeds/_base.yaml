@@ -278,6 +278,8 @@ privileges:
     mode: voice                 # +v
     op: false                   # v1 leftover: flokpit v2 ignores it, `commands` below is what grants
 
+requires: [github]              # sources the breed cannot work without (event catalogue sources); lists replace, a breed without GitHub sets []
+
 commands: [honk]                # flokpit v2 chat commands the agent may use (fly, land, kick, rename, set, trigger, meta, honk); lists replace
 
 workspace:
