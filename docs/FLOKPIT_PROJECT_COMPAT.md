@@ -93,10 +93,10 @@ is self-explaining.
 | `dev-server` | the same with restart on changes | tester, developer (optional) | preferred by the tester when both exist |
 | `test` | unit tests | **developer**, **reviewer**, **tester** (required) | fast; no browser |
 | `test:integration` | tests against a running or spawned instance of the app, no browser | developer, reviewer (optional) | |
-| `e2e` | browser end-to-end tests under `tests/e2e/`; starts the app itself | **tester** (required), developer, reviewer | Playwright, Chromium only |
+| `e2e` | browser end-to-end tests under `tests/e2e/`; starts the app itself | **tester** (required) | Playwright, Chromium only; the pods of the other breeds have no browser |
 | `test-suite` | every automated test (`test`, `test:integration`, `e2e`) | **reviewer** (required: one command to verify a PR), developer | `depends` on the three |
 | `typecheck`, `lint` | static checks | developer, reviewer (optional) | |
-| `check` | what CI runs: static checks plus `test-suite` | **developer** (required: the "done" gate), reviewer, bug-sweep, feature-team | a developer may not claim done before `mise run check` is green |
+| `check` | what CI runs: static checks plus `test` and `test:integration`; never a browser | **developer** (required: the "done" gate), reviewer, bug-sweep, feature-team | a developer may not claim done before `mise run check` is green |
 | `smoke` | start, hit the app once, stop; no browser | developer (optional) | cheap confidence for small fixes |
 | `ui-test [path]` | start the app if nothing answers on `$PORT`, open a headless browser session on `path`, save a screenshot under `screenshots/`, print the accessibility snapshot; leave both running | **tester** (required for exploratory testing), ui-bugfixing | the session continues with `agent-browser click|fill|snapshot|screenshot ...` |
 | `ui-test:stop` | close that browser session and the app it started | **tester** (required with `ui-test`) | |
@@ -121,6 +121,11 @@ A project that is not there yet (no mise configuration, no tests, no
 AGENTS.md) can still be worked on: every breed falls back to the project's
 documents, manifest and CI workflow. The `project-setup` formation, or a
 single `devops` agent, adds the contract.
+
+`check` and `test` must not need a browser: developer and reviewer pods have
+none, and a browser test that cannot start there is not a finding. `e2e` and
+`ui-test` are the tester's (and CI's); the developer and the reviewer read
+their result from `gh pr checks`.
 
 A project that has no browser UI needs no `e2e` or `ui-test`: the tester then
 tests the API or the CLI end to end with the project's own test framework

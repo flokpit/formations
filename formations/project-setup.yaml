@@ -125,6 +125,13 @@ escalate_to_human:
   - merge_to_default_branch
   - secret_or_repository_setting_needed   # CI secrets, branch protection, enabling issues: humans only
   - budget_or_lifetime_extension
+  - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
+
+member_brief: |
+  You are a member of the flock {flock}; {lead} leads it. The flock's task is:
+  {task}
+  Do not start on it. Say once that you are ready and wait for your part from
+  {lead}.
 
 kickoff: |
   Post the inventory (stack, how the project is run and tested today, what

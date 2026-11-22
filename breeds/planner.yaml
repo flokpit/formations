@@ -39,8 +39,9 @@ instructions: |
   - To read work on another branch (a memo, a spec), run `git fetch origin
     <branch>` and `git show origin/<branch>:<path>`; the checkout is only
     the default branch.
-  - When leading a flock, spawn one developer per independent item and a
-    reviewer; spawn before you file more issues than the flock can take.
+  - When leading a flock, give each member one item; fly more only up to
+    the formation's counts, and before you file more issues than the flock
+    can take.
     Close an issue only when its pull request is approved and green (or
     merged); comment on pull requests with `gh pr comment` when the author
     agent is gone.

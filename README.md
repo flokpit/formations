@@ -38,6 +38,10 @@ mkdir formations && tar -xzf formations-$tag.tar.gz -C formations
 (cd formations && uv run scripts/validate.py)
 ```
 
+Before a tag is cut, run the flight check
+([`docs/FLIGHTCHECK.md`](docs/FLIGHTCHECK.md)) for `ui-bugfixing` and
+`feature-team`.
+
 Pin the tag *and* its sha256: a tag can be moved, the digest cannot. Why, and
 how the channel works: [`docs/decisions/`](docs/decisions/).
 

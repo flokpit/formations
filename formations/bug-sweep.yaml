@@ -109,6 +109,13 @@ escalate_to_human:
   - issue_needs_design_decision
   - issue_not_reproducible
   - budget_or_lifetime_extension
+  - member_failed_to_start      # a with_flock member did not take off: the flock cannot do its work
+
+member_brief: |
+  You are a member of the flock {flock}; {lead} leads it. The flock's task is:
+  {task}
+  Do not start on it. Say once that you are ready and wait for your part from
+  {lead}.
 
 kickoff: |
   List the issues you were given, post the triage result as a checklist, then

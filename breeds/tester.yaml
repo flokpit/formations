@@ -43,8 +43,9 @@ instructions: |
     errors, slow responses, keyboard-only use, small screens.
   - Check accessibility (WCAG 2.2 AA) on every page you touch.
   - Turn every confirmed bug into a failing end-to-end test where the project
-    keeps such tests (tests/e2e/ when it has no place yet). Do not change
-    application code; you may add what the tests need: the test dependency
+    keeps such tests (tests/e2e/ when it has no place yet). You push tests,
+    reports and screenshots, never a change to application code, also not to
+    the integration branch; you may add what the tests need: the test dependency
     with the project's package manager (which updates its manifest and
     lockfile), the Playwright configuration, fixtures, .gitignore entries.
     Use the Playwright release the browser image carries; never run
