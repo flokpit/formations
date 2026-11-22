@@ -39,6 +39,14 @@ created from one of them and may override the filters
 short-lived: the channel history is their memory, and they call `chat_done`
 and stop when their pass is over.
 
+What flokpit v2 reads of a breed today, field by field:
+[`docs/CONCEPT.md`](../docs/CONCEPT.md) section 7.6. A field marked *not read*
+there has no effect on a hosted agent yet.
+
+What flokpit v2 reads of a breed today, field by field:
+[`docs/CONCEPT.md`](../docs/CONCEPT.md) section 7.6. A field marked *not read*
+there has no effect on a hosted agent yet.
+
 ## Schema (`formations/v1alpha1`)
 
 Machine-readable: [`specs/breed.schema.json`](../specs/breed.schema.json).

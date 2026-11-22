@@ -6,9 +6,10 @@ split and handed off, who verifies, and when the flock stops. A running
 formation is a **flock**; its orchestrating agent is the **lead**. Concept:
 `docs/IDEA.md`, section "Next step: formations".
 
-All formations are **proposals** (`status: proposal`). Nothing in flokpit
-reads them yet; until it does, the lead's breed instructions plus the rendered
-formation text are what make the flock behave.
+All formations are **proposals** (`status: proposal`). What flokpit
+v2 reads of them today, field by field, is the table in
+[`docs/CONCEPT.md`](../docs/CONCEPT.md) section 7.6; a field marked *not read*
+there has no effect on a hosted flock yet.
 
 | Formation | Lead | Members | Shape | Use | Pods at take-off |
 |---|---|---|---|---|---|
